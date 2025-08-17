@@ -1,0 +1,54 @@
+{
+  "name": "commit-hero",
+  "displayName": "Commit Hero",
+  "description": "开发者效率分析插件",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.103.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:commit-hero.startTracking",
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "commit-hero.startTracking",
+        "title": "开始追踪开发效率"
+      },
+      {
+        "command": "commit-hero.stopTracking",
+        "title": "停止追踪开发效率"
+      }
+    ],
+    "configuration": {
+      "title": "Commit Hero",
+      "properties": {
+        "commitHero.apiUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "description": "Commit Hero Web 服务器地址"
+        },
+        "commitHero.userEmail": {
+          "type": "string",
+          "default": "",
+          "description": "用户邮箱地址"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/vscode": "^1.103.0",
+    "typescript": "^5.9.2"
+  }
+}
