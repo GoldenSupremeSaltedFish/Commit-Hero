@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbOperations } from '@/lib/database';
 
+interface User {
+  id: number;
+  email: string;
+  created_at: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, repository, commitHash, message, linesAdded, linesDeleted } = body;
 
     // 获取或创建用户
-    let user = dbOperations.getUser(email);
+    let user = dbOperations.getUser(email) as User | undefined;
     if (!user) {
-      const result = dbOperations.createUser(email);
-      user = dbOperations.getUser(email);
+      dbOperations.createUser(email);
+      user = dbOperations.getUser(email) as User | undefined;
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: '用户创建失败' }, { status: 500 });
     }
 
     // 添加提交记录
@@ -40,7 +50,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取用户
-    const user = dbOperations.getUser(email);
+    const user = dbOperations.getUser(email) as User | undefined;
     if (!user) {
       return NextResponse.json({ commits: [] });
     }

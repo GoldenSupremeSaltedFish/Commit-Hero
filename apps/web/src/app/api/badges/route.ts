@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbOperations } from '@/lib/database';
 
+interface User {
+  id: number;
+  email: string;
+  created_at: string;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -11,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取用户
-    const user = dbOperations.getUser(email);
+    const user = dbOperations.getUser(email) as User | undefined;
     if (!user) {
       return NextResponse.json({ badges: [], userBadges: [] });
     }
@@ -33,7 +39,7 @@ export async function POST(request: NextRequest) {
     const { email, badgeId } = body;
 
     // 获取用户
-    const user = dbOperations.getUser(email);
+    const user = dbOperations.getUser(email) as User | undefined;
     if (!user) {
       return NextResponse.json({ error: '用户不存在' }, { status: 404 });
     }
