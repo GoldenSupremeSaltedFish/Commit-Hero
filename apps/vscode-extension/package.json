@@ -15,16 +15,68 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "commit-hero",
+          "title": "Commit Hero",
+          "icon": "$(trophy)"
+        }
+      ]
+    },
+    "views": {
+      "commit-hero": [
+        {
+          "id": "commit-hero-view",
+          "name": "开发效率",
+          "when": "workspaceHasGit"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "commit-hero.startTracking",
-        "title": "开始追踪开发效率"
+        "title": "开始追踪开发效率",
+        "category": "Commit Hero"
       },
       {
         "command": "commit-hero.stopTracking",
-        "title": "停止追踪开发效率"
+        "title": "停止追踪开发效率",
+        "category": "Commit Hero"
+      },
+      {
+        "command": "commit-hero.openDashboard",
+        "title": "打开 Web 仪表盘",
+        "category": "Commit Hero"
+      },
+      {
+        "command": "commit-hero.showAchievement",
+        "title": "显示成就",
+        "category": "Commit Hero"
       }
     ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "commit-hero.startTracking",
+          "when": "workspaceHasGit"
+        },
+        {
+          "command": "commit-hero.stopTracking",
+          "when": "workspaceHasGit"
+        },
+        {
+          "command": "commit-hero.openDashboard"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "commit-hero.openDashboard",
+          "when": "view == commit-hero-view",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "Commit Hero",
       "properties": {
@@ -37,6 +89,11 @@
           "type": "string",
           "default": "",
           "description": "用户邮箱地址"
+        },
+        "commitHero.autoTrack": {
+          "type": "boolean",
+          "default": true,
+          "description": "自动追踪 Git 提交"
         }
       }
     }
