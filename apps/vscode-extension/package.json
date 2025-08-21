@@ -1,14 +1,29 @@
 {
   "name": "commit-hero",
   "displayName": "Commit Hero",
-  "description": "开发者效率分析插件",
-  "version": "0.1.0",
+  "description": "开发者效率分析平台 - 追踪代码提交，解锁成就徽章",
+  "version": "1.0.0",
+  "publisher": "commit-hero",
   "engines": {
-    "vscode": "^1.103.0"
+    "vscode": "^1.74.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "SCM Providers"
   ],
+  "keywords": [
+    "git",
+    "commit",
+    "analytics",
+    "badges",
+    "achievements",
+    "productivity"
+  ],
+  "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
   "activationEvents": [
     "onCommand:commit-hero.startTracking",
     "onStartupFinished"
@@ -18,61 +33,77 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "commit-hero",
+          "id": "commit-hero-view",
           "title": "Commit Hero",
-          "icon": "$(trophy)"
+          "icon": "resources/icon.svg"
         }
       ]
     },
     "views": {
-      "commit-hero": [
+      "commit-hero-view": [
         {
-          "id": "commit-hero-view",
-          "name": "开发效率",
-          "when": "workspaceHasGit"
+          "id": "commit-hero-stats",
+          "name": "统计信息",
+          "when": "commitHero.isTracking"
+        },
+        {
+          "id": "commit-hero-badges",
+          "name": "成就徽章",
+          "when": "commitHero.isTracking"
         }
       ]
     },
     "commands": [
       {
         "command": "commit-hero.startTracking",
-        "title": "开始追踪开发效率",
-        "category": "Commit Hero"
+        "title": "开始追踪",
+        "category": "Commit Hero",
+        "icon": "$(play)"
       },
       {
         "command": "commit-hero.stopTracking",
-        "title": "停止追踪开发效率",
-        "category": "Commit Hero"
+        "title": "停止追踪",
+        "category": "Commit Hero",
+        "icon": "$(stop)"
       },
       {
         "command": "commit-hero.openDashboard",
-        "title": "打开 Web 仪表盘",
-        "category": "Commit Hero"
+        "title": "打开仪表板",
+        "category": "Commit Hero",
+        "icon": "$(dashboard)"
       },
       {
         "command": "commit-hero.showAchievement",
         "title": "显示成就",
         "category": "Commit Hero"
+      },
+      {
+        "command": "commit-hero.refreshStats",
+        "title": "刷新统计",
+        "category": "Commit Hero",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
-      "commandPalette": [
+      "view/title": [
         {
           "command": "commit-hero.startTracking",
-          "when": "workspaceHasGit"
+          "when": "view == commit-hero-stats && !commitHero.isTracking",
+          "group": "navigation"
         },
         {
           "command": "commit-hero.stopTracking",
-          "when": "workspaceHasGit"
+          "when": "view == commit-hero-stats && commitHero.isTracking",
+          "group": "navigation"
         },
         {
-          "command": "commit-hero.openDashboard"
-        }
-      ],
-      "view/title": [
+          "command": "commit-hero.refreshStats",
+          "when": "view == commit-hero-stats",
+          "group": "navigation"
+        },
         {
           "command": "commit-hero.openDashboard",
-          "when": "view == commit-hero-view",
+          "when": "view == commit-hero-stats",
           "group": "navigation"
         }
       ]
@@ -83,17 +114,21 @@
         "commitHero.apiUrl": {
           "type": "string",
           "default": "http://localhost:3000",
-          "description": "Commit Hero Web 服务器地址"
+          "description": "API 服务器地址"
         },
         "commitHero.userEmail": {
           "type": "string",
-          "default": "",
           "description": "用户邮箱地址"
         },
         "commitHero.autoTrack": {
           "type": "boolean",
           "default": true,
-          "description": "自动追踪 Git 提交"
+          "description": "启动时自动开始追踪"
+        },
+        "commitHero.showNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "显示成就通知"
         }
       }
     }
@@ -101,11 +136,32 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
   },
   "devDependencies": {
-    "@types/node": "^24.3.0",
-    "@types/vscode": "^1.103.0",
-    "typescript": "^5.9.2"
-  }
+    "@types/vscode": "^1.74.0",
+    "@types/node": "^18.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.0.0",
+    "@typescript-eslint/parser": "^5.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^4.9.0",
+    "vsce": "^2.0.0"
+  },
+  "dependencies": {
+    "@commit-hero/api-client": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/commit-hero/vscode-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/commit-hero/vscode-extension/issues"
+  },
+  "homepage": "https://github.com/commit-hero/vscode-extension#readme",
+  "license": "MIT"
 }

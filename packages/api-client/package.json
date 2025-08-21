@@ -1,0 +1,20 @@
+{
+  "name": "@commit-hero/api-client",
+  "version": "1.0.0",
+  "description": "Commit Hero API 客户端",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@commit-hero/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.3"
+  },
+  "keywords": ["commit", "hero", "api", "client"],
+  "author": "Commit Hero Team",
+  "license": "MIT"
+}

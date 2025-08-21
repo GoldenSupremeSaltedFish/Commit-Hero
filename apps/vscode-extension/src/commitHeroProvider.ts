@@ -1,43 +1,128 @@
 import * as vscode from 'vscode';
+import { CommitHeroAPI } from '@commit-hero/api-client';
 
 export class CommitHeroProvider implements vscode.WebviewViewProvider {
-	public static readonly viewType = 'commit-hero-view';
+  public static readonly viewType = 'commit-hero-stats';
+  private _view?: vscode.WebviewView;
+  private api: CommitHeroAPI;
+  private isTracking: boolean = false;
 
-	constructor(
-		private readonly _extensionUri: vscode.Uri,
-	) { }
+  constructor(private readonly _extensionUri: vscode.Uri) {
+    const config = vscode.workspace.getConfiguration('commitHero');
+    const apiUrl = config.get<string>('apiUrl', 'http://localhost:3000');
+    this.api = new CommitHeroAPI(apiUrl);
+  }
 
-	public resolveWebviewView(
-		webviewView: vscode.WebviewView,
-		context: vscode.WebviewViewResolveContext,
-		_token: vscode.CancellationToken,
-	) {
-		webviewView.webview.options = {
-			// 允许在 webview 中运行脚本
-			enableScripts: true,
-			// 限制 webview 只能访问扩展的资源
-			localResourceRoots: [
-				this._extensionUri
-			]
-		};
+  public resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken,
+  ) {
+    this._view = webviewView;
 
-		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [
+        this._extensionUri
+      ]
+    };
 
-		// 处理来自 webview 的消息
-		webviewView.webview.onDidReceiveMessage(data => {
-			switch (data.type) {
-				case 'openDashboard':
-					vscode.env.openExternal(vscode.Uri.parse('http://localhost:3000'));
-					break;
-				case 'showAchievement':
-					vscode.window.showInformationMessage('🎉 恭喜！你解锁了新成就！');
-					break;
-			}
-		});
-	}
+    webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
-	private _getHtmlForWebview(webview: vscode.Webview) {
-		return `<!DOCTYPE html>
+    // 处理来自 webview 的消息
+    webviewView.webview.onDidReceiveMessage(async (data) => {
+      switch (data.type) {
+        case 'refresh':
+          await this.refreshData();
+          break;
+        case 'openDashboard':
+          await vscode.commands.executeCommand('commit-hero.openDashboard');
+          break;
+        case 'startTracking':
+          await vscode.commands.executeCommand('commit-hero.startTracking');
+          break;
+        case 'stopTracking':
+          await vscode.commands.executeCommand('commit-hero.stopTracking');
+          break;
+      }
+    });
+
+    // 初始加载数据
+    this.refreshData();
+  }
+
+  public async refreshData(): Promise<void> {
+    if (!this._view) {
+      return;
+    }
+
+    try {
+      const config = vscode.workspace.getConfiguration('commitHero');
+      const userEmail = config.get<string>('userEmail');
+
+      if (!userEmail) {
+        this._view.webview.postMessage({
+          type: 'updateData',
+          data: {
+            error: '请先配置用户邮箱地址',
+            stats: null,
+            badges: []
+          }
+        });
+        return;
+      }
+
+      // 获取用户统计信息
+      const statsResponse = await this.api.getUserStats(userEmail);
+      const badgesResponse = await this.api.getBadges(userEmail);
+
+      if (statsResponse.success && badgesResponse.success) {
+        this._view.webview.postMessage({
+          type: 'updateData',
+          data: {
+            stats: statsResponse.data,
+            badges: badgesResponse.data?.badges || [],
+            userBadges: badgesResponse.data?.userBadges || [],
+            error: null
+          }
+        });
+      } else {
+        this._view.webview.postMessage({
+          type: 'updateData',
+          data: {
+            error: '获取数据失败，请检查 API 服务器是否运行',
+            stats: null,
+            badges: []
+          }
+        });
+      }
+    } catch (error) {
+      this._view.webview.postMessage({
+        type: 'updateData',
+        data: {
+          error: '网络错误：' + (error as Error).message,
+          stats: null,
+          badges: []
+        }
+      });
+    }
+  }
+
+  public updateTrackingStatus(isTracking: boolean): void {
+    this.isTracking = isTracking;
+    if (this._view) {
+      this._view.webview.postMessage({
+        type: 'updateTrackingStatus',
+        isTracking
+      });
+    }
+  }
+
+  private _getHtmlForWebview(webview: vscode.Webview): string {
+    const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'resources', 'style.css'));
+    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'resources', 'script.js'));
+
+    return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -48,231 +133,344 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
             padding: 16px;
-            background-color: var(--vscode-sideBar-background);
-            color: var(--vscode-sideBar-foreground);
+            background: var(--vscode-editor-background);
+            color: var(--vscode-editor-foreground);
         }
-        
+
         .header {
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: space-between;
             margin-bottom: 16px;
             padding-bottom: 12px;
-            border-bottom: 1px solid var(--vscode-sideBar-border);
+            border-bottom: 1px solid var(--vscode-panel-border);
         }
-        
+
         .header h2 {
             margin: 0;
             font-size: 16px;
             font-weight: 600;
+            color: var(--vscode-editor-foreground);
         }
-        
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--vscode-errorForeground);
+        }
+
+        .status-indicator.tracking {
+            background: var(--vscode-testing-iconPassed);
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
             margin-bottom: 20px;
         }
-        
+
         .stat-card {
-            background: var(--vscode-sideBarSectionHeader-background);
-            border: 1px solid var(--vscode-sideBar-border);
+            background: var(--vscode-editor-inactiveSelectionBackground);
+            border: 1px solid var(--vscode-panel-border);
             border-radius: 6px;
             padding: 12px;
             text-align: center;
         }
-        
-        .stat-number {
+
+        .stat-value {
             font-size: 20px;
-            font-weight: bold;
-            color: var(--vscode-textLink-foreground);
+            font-weight: 600;
+            color: var(--vscode-editor-foreground);
+            margin-bottom: 4px;
         }
-        
+
         .stat-label {
             font-size: 12px;
             color: var(--vscode-descriptionForeground);
-            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        
+
         .badges-section {
             margin-bottom: 20px;
         }
-        
-        .badges-section h3 {
+
+        .section-title {
             font-size: 14px;
-            margin: 0 0 12px 0;
-            color: var(--vscode-sideBarSectionHeader-foreground);
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--vscode-editor-foreground);
         }
-        
-        .badge-grid {
+
+        .badges-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
             gap: 8px;
         }
-        
-        .badge {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
+
+        .badge-item {
+            background: var(--vscode-editor-inactiveSelectionBackground);
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all 0.2s ease;
         }
-        
-        .badge:hover {
-            transform: scale(1.1);
+
+        .badge-item:hover {
+            background: var(--vscode-list-hoverBackground);
+            border-color: var(--vscode-focusBorder);
         }
-        
-        .badge.locked {
-            background: var(--vscode-disabledForeground);
-            opacity: 0.5;
+
+        .badge-item.unlocked {
+            background: var(--vscode-testing-iconPassed);
+            border-color: var(--vscode-testing-iconPassed);
         }
-        
+
+        .badge-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+
+        .badge-name {
+            font-size: 10px;
+            color: var(--vscode-editor-foreground);
+            line-height: 1.2;
+        }
+
         .actions {
             display: flex;
-            flex-direction: column;
             gap: 8px;
+            margin-bottom: 16px;
         }
-        
+
         .btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--vscode-button-border);
+            border-radius: 4px;
             background: var(--vscode-button-background);
             color: var(--vscode-button-foreground);
-            border: none;
-            border-radius: 4px;
-            padding: 8px 12px;
             font-size: 12px;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.2s ease;
         }
-        
+
         .btn:hover {
             background: var(--vscode-button-hoverBackground);
         }
-        
-        .btn.secondary {
-            background: var(--vscode-button-secondaryBackground);
-            color: var(--vscode-button-secondaryForeground);
+
+        .btn.primary {
+            background: var(--vscode-button-prominentBackground);
+            color: var(--vscode-button-prominentForeground);
         }
-        
-        .btn.secondary:hover {
-            background: var(--vscode-button-secondaryHoverBackground);
+
+        .btn.primary:hover {
+            background: var(--vscode-button-prominentHoverBackground);
         }
-        
-        .achievement-notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-            color: white;
-            padding: 12px 16px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            transform: translateX(100%);
-            transition: transform 0.3s ease;
-            z-index: 1000;
+
+        .error-message {
+            background: var(--vscode-inputValidation-errorBackground);
+            border: 1px solid var(--vscode-inputValidation-errorBorder);
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 16px;
+            color: var(--vscode-inputValidation-errorForeground);
+            font-size: 12px;
         }
-        
-        .achievement-notification.show {
-            transform: translateX(0);
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <span style="font-size: 20px;">🏆</span>
         <h2>Commit Hero</h2>
+        <div class="status-indicator" id="statusIndicator"></div>
     </div>
-    
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-number" id="today-commits">0</div>
-            <div class="stat-label">今日提交</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="total-commits">0</div>
-            <div class="stat-label">总提交</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="streak-days">0</div>
-            <div class="stat-label">连续天数</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="badges-count">0</div>
-            <div class="stat-label">获得徽章</div>
-        </div>
-    </div>
-    
-    <div class="badges-section">
-        <h3>最近徽章</h3>
-        <div class="badge-grid" id="badges-grid">
-            <div class="badge" title="首次提交">🥇</div>
-            <div class="badge locked" title="连续提交">🔥</div>
-            <div class="badge locked" title="高产开发者">⚡</div>
-        </div>
-    </div>
-    
+
     <div class="actions">
-        <button class="btn" onclick="openDashboard()">打开仪表盘</button>
-        <button class="btn secondary" onclick="refreshStats()">刷新数据</button>
+        <button class="btn" id="startBtn">开始追踪</button>
+        <button class="btn" id="stopBtn">停止追踪</button>
+        <button class="btn primary" id="dashboardBtn">仪表板</button>
     </div>
-    
-    <div class="achievement-notification" id="achievement-notification">
-        <div style="font-weight: bold; margin-bottom: 4px;">🎉 成就解锁！</div>
-        <div style="font-size: 12px;">Bug Buster - 修复了10个bug</div>
+
+    <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+    <div id="loadingMessage" class="loading">
+        <div>加载中...</div>
+    </div>
+
+    <div id="content" style="display: none;">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalCommits">0</div>
+                <div class="stat-label">总提交</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalLines">0</div>
+                <div class="stat-label">代码行数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="repositories">0</div>
+                <div class="stat-label">仓库数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="badgesEarned">0</div>
+                <div class="stat-label">成就徽章</div>
+            </div>
+        </div>
+
+        <div class="badges-section">
+            <div class="section-title">成就徽章</div>
+            <div class="badges-grid" id="badgesGrid">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🏆</div>
+                    <div>暂无成就徽章</div>
+                    <div style="font-size: 11px; margin-top: 8px;">开始提交代码来解锁成就吧！</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         const vscode = acquireVsCodeApi();
-        
-        // 模拟数据更新
-        function updateStats() {
-            document.getElementById('today-commits').textContent = Math.floor(Math.random() * 10) + 1;
-            document.getElementById('total-commits').textContent = Math.floor(Math.random() * 100) + 50;
-            document.getElementById('streak-days').textContent = Math.floor(Math.random() * 7) + 1;
-            document.getElementById('badges-count').textContent = Math.floor(Math.random() * 3) + 1;
-        }
-        
-        function openDashboard() {
-            vscode.postMessage({ type: 'openDashboard' });
-        }
-        
-        function refreshStats() {
-            updateStats();
-            vscode.window.showInformationMessage('数据已刷新');
-        }
-        
-        function showAchievement() {
-            const notification = document.getElementById('achievement-notification');
-            notification.classList.add('show');
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
-        }
-        
-        // 初始化
-        updateStats();
-        
-        // 模拟成就解锁（每30秒）
-        setInterval(() => {
-            if (Math.random() > 0.7) {
-                showAchievement();
-            }
-        }, 30000);
-        
-        // 徽章点击事件
-        document.querySelectorAll('.badge').forEach(badge => {
-            badge.addEventListener('click', () => {
-                if (!badge.classList.contains('locked')) {
-                    vscode.postMessage({ type: 'showAchievement' });
-                }
-            });
+
+        // 状态管理
+        let isTracking = false;
+        let currentData = null;
+
+        // DOM 元素
+        const statusIndicator = document.getElementById('statusIndicator');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const dashboardBtn = document.getElementById('dashboardBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const content = document.getElementById('content');
+
+        // 事件监听
+        startBtn.addEventListener('click', () => {
+            vscode.postMessage({ type: 'startTracking' });
         });
+
+        stopBtn.addEventListener('click', () => {
+            vscode.postMessage({ type: 'stopTracking' });
+        });
+
+        dashboardBtn.addEventListener('click', () => {
+            vscode.postMessage({ type: 'openDashboard' });
+        });
+
+        // 消息处理
+        window.addEventListener('message', event => {
+            const message = event.data;
+
+            switch (message.type) {
+                case 'updateData':
+                    updateData(message.data);
+                    break;
+                case 'updateTrackingStatus':
+                    updateTrackingStatus(message.isTracking);
+                    break;
+            }
+        });
+
+        function updateTrackingStatus(tracking) {
+            isTracking = tracking;
+            statusIndicator.classList.toggle('tracking', tracking);
+            startBtn.style.display = tracking ? 'none' : 'block';
+            stopBtn.style.display = tracking ? 'block' : 'none';
+        }
+
+        function updateData(data) {
+            currentData = data;
+            
+            if (data.error) {
+                showError(data.error);
+                return;
+            }
+
+            hideError();
+            showContent();
+            updateStats(data.stats);
+            updateBadges(data.badges, data.userBadges);
+        }
+
+        function updateStats(stats) {
+            if (!stats) return;
+
+            document.getElementById('totalCommits').textContent = stats.total_commits || 0;
+            document.getElementById('totalLines').textContent = (stats.total_lines_added || 0) + (stats.total_lines_deleted || 0);
+            document.getElementById('repositories').textContent = stats.repositories?.length || 0;
+            document.getElementById('badgesEarned').textContent = stats.badges_earned || 0;
+        }
+
+        function updateBadges(badges, userBadges) {
+            const badgesGrid = document.getElementById('badgesGrid');
+            
+            if (!badges || badges.length === 0) {
+                badgesGrid.innerHTML = \`
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🏆</div>
+                        <div>暂无成就徽章</div>
+                        <div style="font-size: 11px; margin-top: 8px;">开始提交代码来解锁成就吧！</div>
+                    </div>
+                \`;
+                return;
+            }
+
+            const unlockedBadgeIds = new Set(userBadges?.map(ub => ub.badge_id) || []);
+            
+            badgesGrid.innerHTML = badges.map(badge => {
+                const isUnlocked = unlockedBadgeIds.has(badge.id);
+                return \`
+                    <div class="badge-item \${isUnlocked ? 'unlocked' : ''}" title="\${badge.description}">
+                        <div class="badge-icon">\${badge.icon_url}</div>
+                        <div class="badge-name">\${badge.name}</div>
+                    </div>
+                \`;
+            }).join('');
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            loadingMessage.style.display = 'none';
+            content.style.display = 'none';
+        }
+
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+
+        function showContent() {
+            loadingMessage.style.display = 'none';
+            content.style.display = 'block';
+        }
+
+        // 初始化
+        updateTrackingStatus(false);
     </script>
 </body>
 </html>`;
-	}
+  }
 }
