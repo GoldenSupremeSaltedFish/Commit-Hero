@@ -82,6 +82,30 @@
         "title": "刷新统计",
         "category": "Commit Hero",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "commit-hero.exportData",
+        "title": "导出数据",
+        "category": "Commit Hero",
+        "icon": "$(export)"
+      },
+      {
+        "command": "commit-hero.importData",
+        "title": "导入数据",
+        "category": "Commit Hero",
+        "icon": "$(import)"
+      },
+      {
+        "command": "commit-hero.backupData",
+        "title": "备份数据库",
+        "category": "Commit Hero",
+        "icon": "$(save)"
+      },
+      {
+        "command": "commit-hero.showDataInfo",
+        "title": "数据信息",
+        "category": "Commit Hero",
+        "icon": "$(info)"
       }
     ],
     "menus": {

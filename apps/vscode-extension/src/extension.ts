@@ -3,6 +3,8 @@ import { CommitHeroProvider } from './commitHeroProvider';
 import { GitTracker } from './gitTracker';
 import { StatusBarManager } from './statusBarManager';
 import { NotificationManager } from './notificationManager';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export class CommitHeroExtension {
   private static instance: CommitHeroExtension;
@@ -63,6 +65,27 @@ export class CommitHeroExtension {
       () => this.refreshStats()
     );
 
+    // 数据管理命令
+    const exportDataCommand = vscode.commands.registerCommand(
+      'commit-hero.exportData',
+      () => this.exportData()
+    );
+
+    const importDataCommand = vscode.commands.registerCommand(
+      'commit-hero.importData',
+      () => this.importData()
+    );
+
+    const backupDataCommand = vscode.commands.registerCommand(
+      'commit-hero.backupData',
+      () => this.backupData()
+    );
+
+    const showDataInfoCommand = vscode.commands.registerCommand(
+      'commit-hero.showDataInfo',
+      () => this.showDataInfo()
+    );
+
     // 注册上下文订阅
     this.context.subscriptions.push(
       providerRegistration,
@@ -70,7 +93,11 @@ export class CommitHeroExtension {
       stopTrackingCommand,
       openDashboardCommand,
       showAchievementCommand,
-      refreshStatsCommand
+      refreshStatsCommand,
+      exportDataCommand,
+      importDataCommand,
+      backupDataCommand,
+      showDataInfoCommand
     );
 
     // 初始化状态栏
@@ -193,6 +220,180 @@ export class CommitHeroExtension {
     } catch (error) {
       console.error('刷新统计失败:', error);
       vscode.window.showErrorMessage('刷新统计失败: ' + (error as Error).message);
+    }
+  }
+
+  private async exportData(): Promise<void> {
+    try {
+      // 选择保存位置
+      const uri = await vscode.window.showSaveDialog({
+        title: '导出 Commit Hero 数据',
+        filters: {
+          'JSON 文件': ['json']
+        },
+        suggestedName: `commit-hero-data-${new Date().toISOString().split('T')[0]}.json`
+      });
+
+      if (!uri) {
+        return;
+      }
+
+      // 调用 API 导出数据
+      const config = vscode.workspace.getConfiguration('commitHero');
+      const apiUrl = config.get<string>('apiUrl', 'http://localhost:3000');
+      
+      const response = await fetch(`${apiUrl}/api/export`);
+      if (!response.ok) {
+        throw new Error('导出数据失败');
+      }
+
+      const data = await response.json();
+      
+      // 写入文件
+      const wsedit = new vscode.WorkspaceEdit();
+      wsedit.createFile(uri, { overwrite: true });
+      await vscode.workspace.applyEdit(wsedit);
+      
+      await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(data, null, 2)));
+      
+      vscode.window.showInformationMessage(`数据已导出到: ${uri.fsPath}`);
+      
+    } catch (error) {
+      console.error('导出数据失败:', error);
+      vscode.window.showErrorMessage('导出数据失败: ' + (error as Error).message);
+    }
+  }
+
+  private async importData(): Promise<void> {
+    try {
+      // 选择导入文件
+      const uris = await vscode.window.showOpenDialog({
+        title: '导入 Commit Hero 数据',
+        filters: {
+          'JSON 文件': ['json']
+        },
+        canSelectMany: false
+      });
+
+      if (!uris || uris.length === 0) {
+        return;
+      }
+
+      const uri = uris[0];
+      
+      // 确认导入
+      const result = await vscode.window.showWarningMessage(
+        '导入数据将覆盖现有数据，确定要继续吗？',
+        '确定',
+        '取消'
+      );
+
+      if (result !== '确定') {
+        return;
+      }
+
+      // 读取文件
+      const fileData = await vscode.workspace.fs.readFile(uri);
+      const data = JSON.parse(fileData.toString());
+
+      // 调用 API 导入数据
+      const config = vscode.workspace.getConfiguration('commitHero');
+      const apiUrl = config.get<string>('apiUrl', 'http://localhost:3000');
+      
+      const response = await fetch(`${apiUrl}/api/import`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (!response.ok) {
+        throw new Error('导入数据失败');
+      }
+
+      vscode.window.showInformationMessage('数据导入成功');
+      
+      // 刷新统计信息
+      await this.refreshStats();
+      
+    } catch (error) {
+      console.error('导入数据失败:', error);
+      vscode.window.showErrorMessage('导入数据失败: ' + (error as Error).message);
+    }
+  }
+
+  private async backupData(): Promise<void> {
+    try {
+      // 选择备份位置
+      const uri = await vscode.window.showSaveDialog({
+        title: '备份 Commit Hero 数据库',
+        filters: {
+          'SQLite 数据库': ['db', 'sqlite']
+        },
+        suggestedName: `commit-hero-backup-${new Date().toISOString().split('T')[0]}.db`
+      });
+
+      if (!uri) {
+        return;
+      }
+
+      // 调用 API 备份数据
+      const config = vscode.workspace.getConfiguration('commitHero');
+      const apiUrl = config.get<string>('apiUrl', 'http://localhost:3000');
+      
+      const response = await fetch(`${apiUrl}/api/backup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ backupPath: uri.fsPath })
+      });
+
+      if (!response.ok) {
+        throw new Error('备份数据失败');
+      }
+
+      vscode.window.showInformationMessage(`数据库已备份到: ${uri.fsPath}`);
+      
+    } catch (error) {
+      console.error('备份数据失败:', error);
+      vscode.window.showErrorMessage('备份数据失败: ' + (error as Error).message);
+    }
+  }
+
+  private async showDataInfo(): Promise<void> {
+    try {
+      // 调用 API 获取数据库信息
+      const config = vscode.workspace.getConfiguration('commitHero');
+      const apiUrl = config.get<string>('apiUrl', 'http://localhost:3000');
+      
+      const response = await fetch(`${apiUrl}/api/stats`);
+      if (!response.ok) {
+        throw new Error('获取数据信息失败');
+      }
+
+      const stats = await response.json();
+      
+      // 显示信息
+      const message = `
+📊 **Commit Hero 数据统计**
+
+👥 用户数量: ${stats.userCount}
+📝 提交记录: ${stats.commitCount}
+🏆 成就徽章: ${stats.badgeCount}
+🎯 已解锁徽章: ${stats.userBadgeCount}
+💾 数据库大小: ${stats.fileSizeMB} MB
+📁 存储位置: ${stats.databasePath}
+
+数据完全存储在本地，安全可靠！
+      `.trim();
+
+      vscode.window.showInformationMessage(message);
+      
+    } catch (error) {
+      console.error('获取数据信息失败:', error);
+      vscode.window.showErrorMessage('获取数据信息失败: ' + (error as Error).message);
     }
   }
 
