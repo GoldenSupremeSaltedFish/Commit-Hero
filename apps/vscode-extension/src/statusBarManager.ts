@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 export class StatusBarManager {
-  private statusBarItem: vscode.StatusBarItem;
+  private statusBarItem!: vscode.StatusBarItem;
   private isInitialized: boolean = false;
 
   public initialize(): void {

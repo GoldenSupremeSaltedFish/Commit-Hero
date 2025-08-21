@@ -231,7 +231,7 @@ export class CommitHeroExtension {
         filters: {
           'JSON 文件': ['json']
         },
-        suggestedName: `commit-hero-data-${new Date().toISOString().split('T')[0]}.json`
+        defaultUri: vscode.Uri.file(`commit-hero-data-${new Date().toISOString().split('T')[0]}.json`)
       });
 
       if (!uri) {
@@ -331,7 +331,7 @@ export class CommitHeroExtension {
         filters: {
           'SQLite 数据库': ['db', 'sqlite']
         },
-        suggestedName: `commit-hero-backup-${new Date().toISOString().split('T')[0]}.db`
+        defaultUri: vscode.Uri.file(`commit-hero-backup-${new Date().toISOString().split('T')[0]}.db`)
       });
 
       if (!uri) {
@@ -373,7 +373,7 @@ export class CommitHeroExtension {
         throw new Error('获取数据信息失败');
       }
 
-      const stats = await response.json();
+      const stats: any = await response.json();
       
       // 显示信息
       const message = `

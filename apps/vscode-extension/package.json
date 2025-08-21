@@ -177,7 +177,6 @@
     "vsce": "^2.0.0"
   },
   "dependencies": {
-    "@commit-hero/api-client": "workspace:*"
   },
   "repository": {
     "type": "git",

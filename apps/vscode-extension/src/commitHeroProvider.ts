@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
-import { CommitHeroAPI } from '@commit-hero/api-client';
+// import { CommitHeroAPI } from '@commit-hero/api-client';
 
 export class CommitHeroProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'commit-hero-stats';
   private _view?: vscode.WebviewView;
-  private api: CommitHeroAPI;
+  // private api: CommitHeroAPI;
   private isTracking: boolean = false;
 
   constructor(private readonly _extensionUri: vscode.Uri) {
-    const config = vscode.workspace.getConfiguration('commitHero');
-    const apiUrl = config.get<string>('apiUrl', 'http://localhost:3000');
-    this.api = new CommitHeroAPI(apiUrl);
+    // const config = vscode.workspace.getConfiguration('commitHero');
+    // const apiUrl = config.get<string>('apiUrl', 'http://localhost:3000');
+    // this.api = new CommitHeroAPI(apiUrl);
   }
 
   public resolveWebviewView(
@@ -72,9 +72,13 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
         return;
       }
 
-      // 获取用户统计信息
-      const statsResponse = await this.api.getUserStats(userEmail);
-      const badgesResponse = await this.api.getBadges(userEmail);
+      // 获取用户统计信息 (调试模式 - 模拟数据)
+      // const statsResponse = await this.api.getUserStats(userEmail);
+      // const badgesResponse = await this.api.getBadges(userEmail);
+
+      // 模拟成功响应用于调试
+      const statsResponse = { success: true, data: { commits: 0, linesAdded: 0, linesDeleted: 0 } };
+      const badgesResponse = { success: true, data: { badges: [], userBadges: [] } };
 
       if (statsResponse.success && badgesResponse.success) {
         this._view.webview.postMessage({
