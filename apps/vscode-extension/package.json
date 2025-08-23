@@ -35,7 +35,10 @@
         {
           "id": "commit-hero-view",
           "title": "Commit Hero",
-          "icon": "resources/icon.svg"
+          "icon": {
+            "light": "resources/icon-light.svg",
+            "dark": "resources/icon-dark.svg"
+          }
         }
       ]
     },
@@ -43,13 +46,11 @@
       "commit-hero-view": [
         {
           "id": "commit-hero-stats",
-          "name": "统计信息",
-          "when": "commitHero.isTracking"
+          "name": "统计信息"
         },
         {
           "id": "commit-hero-badges",
-          "name": "成就徽章",
-          "when": "commitHero.isTracking"
+          "name": "成就徽章"
         }
       ]
     },
@@ -75,7 +76,8 @@
       {
         "command": "commit-hero.showAchievement",
         "title": "显示成就",
-        "category": "Commit Hero"
+        "category": "Commit Hero",
+        "icon": "$(star)"
       },
       {
         "command": "commit-hero.refreshStats",
@@ -135,11 +137,7 @@
     "configuration": {
       "title": "Commit Hero",
       "properties": {
-        "commitHero.apiUrl": {
-          "type": "string",
-          "default": "http://localhost:3000",
-          "description": "API 服务器地址"
-        },
+
         "commitHero.userEmail": {
           "type": "string",
           "description": "用户邮箱地址"
@@ -177,6 +175,7 @@
     "vsce": "^2.0.0"
   },
   "dependencies": {
+    "punycode": "^2.3.1"
   },
   "repository": {
     "type": "git",

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-// import { CommitHeroAPI } from '@commit-hero/api-client';
+import { DataStorage } from './dataStorage';
 
 interface GitRepository {
   rootUri: vscode.Uri;
@@ -25,16 +25,15 @@ interface GitAPI {
 }
 
 export class GitTracker {
-  // private api: CommitHeroAPI;
   private isTracking: boolean = false;
   private disposables: vscode.Disposable[] = [];
   private lastCommitHashes: Map<string, string> = new Map();
   private config: vscode.WorkspaceConfiguration;
+  private dataStorage: DataStorage;
 
   constructor() {
     this.config = vscode.workspace.getConfiguration('commitHero');
-    // const apiUrl = this.config.get<string>('apiUrl', 'http://localhost:3000');
-    // this.api = new CommitHeroAPI(apiUrl);
+    this.dataStorage = DataStorage.getInstance();
   }
 
   public startTracking(): void {
@@ -147,15 +146,14 @@ export class GitTracker {
         lines_deleted: linesChanged.deleted
       };
 
-      // 发送到 API (暂时注释掉用于调试)
-      // const response = await this.api.addCommit(commitData);
+      // 使用本地数据存储
+      const newAchievements = this.dataStorage.addCommit(commitData);
       
-      // 模拟成功响应用于调试
-      console.log('提交已记录 (调试模式):', commitData.message);
+      console.log('提交已记录:', commitData.message);
       
       // 显示通知
       vscode.window.showInformationMessage(
-        `📝 提交已记录 (调试模式)：${commitData.message}`,
+        `📝 提交已记录：${commitData.message}`,
         '查看统计'
       ).then(action => {
         if (action === '查看统计') {
@@ -163,19 +161,17 @@ export class GitTracker {
         }
       });
 
-      // 检查是否有新成就 (暂时注释掉)
-      // if (response.data?.newBadges && response.data.newBadges.length > 0) {
-      //   response.data.newBadges.forEach((badge: any) => {
-      //     vscode.window.showInformationMessage(
-      //       `🎉 恭喜！你解锁了新成就：${badge.name}`,
-      //       '查看详情'
-      //     ).then(action => {
-      //       if (action === '查看详情') {
-      //         vscode.commands.executeCommand('workbench.view.extension.commit-hero-view');
-      //       }
-      //     });
-      //   });
-      // }
+      // 显示新成就通知
+      newAchievements.forEach(achievement => {
+        vscode.window.showInformationMessage(
+          `🎉 恭喜！你解锁了新成就：${achievement.name}`,
+          '查看详情'
+        ).then(action => {
+          if (action === '查看详情') {
+            vscode.commands.executeCommand('workbench.view.extension.commit-hero-view');
+          }
+        });
+      });
 
     } catch (error) {
       console.error('处理新提交时出错:', error);

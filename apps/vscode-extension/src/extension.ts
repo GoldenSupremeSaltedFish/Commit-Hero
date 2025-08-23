@@ -185,11 +185,8 @@ export class CommitHeroExtension {
 
   private async openDashboard(): Promise<void> {
     try {
-      const config = vscode.workspace.getConfiguration('commitHero');
-      const apiUrl = config.get<string>('apiUrl', 'http://localhost:3000');
-      
-      const uri = vscode.Uri.parse(apiUrl);
-      await vscode.env.openExternal(uri);
+      // 本地模式下，直接打开侧边栏视图
+      await vscode.commands.executeCommand('workbench.view.extension.commit-hero-view');
       
     } catch (error) {
       console.error('打开仪表板失败:', error);
