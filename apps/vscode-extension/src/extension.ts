@@ -59,5 +59,5 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-  // 清理逻辑
+  console.log('Commit Hero 插件已停用');
 }

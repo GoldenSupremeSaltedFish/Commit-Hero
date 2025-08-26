@@ -175,29 +175,27 @@ export class GitTracker {
 
     bestStreak = Math.max(bestStreak, currentStreakCount);
 
-    // 检查当前是否在今天或昨天有提交
-    if (lastDate) {
-      const diffTime = today.getTime() - lastDate.getTime();
-      const diffDays = diffTime / (1000 * 3600 * 24);
-      
-      if (diffDays <= 1) {
-        currentStreak = currentStreakCount;
-      } else {
-        currentStreak = 0;
-      }
+    const lastCommitDate = new Date(sortedCommits[sortedCommits.length - 1].date);
+    lastCommitDate.setHours(0, 0, 0, 0);
+    const daysSinceLastCommit = (today.getTime() - lastCommitDate.getTime()) / (1000 * 3600 * 24);
+
+    if (daysSinceLastCommit <= 1) {
+      currentStreak = currentStreakCount;
+    } else {
+      currentStreak = 0;
     }
 
     return { current: currentStreak, best: bestStreak };
   }
 
   private calculateAchievements(): Achievement[] {
-    const stats = this.getStats();
     const achievements: Achievement[] = [];
+    const totalCommits = this.localCommits.length;
 
-    // 首次提交成就
-    if (stats.totalCommits >= 1) {
+    // 基于提交数量的成就
+    if (totalCommits >= 1) {
       achievements.push({
-        id: 'first-commit',
+        id: 'first_commit',
         name: '首次提交',
         description: '完成第一次提交',
         icon: '🎯',
@@ -205,44 +203,34 @@ export class GitTracker {
       });
     }
 
-    // 连续提交成就
-    if (stats.currentStreak >= 3) {
+    if (totalCommits >= 10) {
       achievements.push({
-        id: 'streak-3',
-        name: '连续3天',
-        description: '连续3天有提交',
-        icon: '🔥',
-        unlockedAt: new Date().toISOString()
-      });
-    }
-
-    if (stats.currentStreak >= 7) {
-      achievements.push({
-        id: 'streak-7',
-        name: '连续7天',
-        description: '连续7天有提交',
-        icon: '⚡',
-        unlockedAt: new Date().toISOString()
-      });
-    }
-
-    // 总提交数成就
-    if (stats.totalCommits >= 10) {
-      achievements.push({
-        id: 'commits-10',
+        id: 'ten_commits',
         name: '提交达人',
-        description: '累计10次提交',
-        icon: '⭐',
-        unlockedAt: new Date().toISOString()
+        description: '完成10次提交',
+        icon: '🔟',
+        unlockedAt: this.localCommits[9]?.date || new Date().toISOString()
       });
     }
 
-    if (stats.totalCommits >= 50) {
+    if (totalCommits >= 50) {
       achievements.push({
-        id: 'commits-50',
+        id: 'fifty_commits',
         name: '提交大师',
-        description: '累计50次提交',
-        icon: '🌟',
+        description: '完成50次提交',
+        icon: '💯',
+        unlockedAt: this.localCommits[49]?.date || new Date().toISOString()
+      });
+    }
+
+    // 基于连续提交的成就
+    const streakInfo = this.calculateStreak();
+    if (streakInfo.current >= 3) {
+      achievements.push({
+        id: 'three_day_streak',
+        name: '连续提交',
+        description: '连续3天提交',
+        icon: '🔥',
         unlockedAt: new Date().toISOString()
       });
     }
@@ -250,18 +238,25 @@ export class GitTracker {
     return achievements;
   }
 
+  public getCommits(): CommitData[] {
+    return [...this.localCommits];
+  }
+
   public clearData(): void {
     this.localCommits = [];
     this.trackingActive = false;
     this.saveData();
-    console.log('本地数据已清空');
+    console.log('已清空所有追踪数据');
   }
 
   public isTracking(): boolean {
     return this.trackingActive;
   }
 
-  public getAllCommits(): CommitData[] {
-    return [...this.localCommits];
+  public getStatus(): { isTracking: boolean; commitCount: number } {
+    return {
+      isTracking: this.trackingActive,
+      commitCount: this.localCommits.length
+    };
   }
 }

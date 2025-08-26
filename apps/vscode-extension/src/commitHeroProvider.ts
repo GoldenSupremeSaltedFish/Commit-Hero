@@ -137,31 +137,32 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
             </div>
             <div class="stat-card">
               <div class="stat-value" id="current-streak">0</div>
-              <div class="stat-label">连续天数</div>
+              <div class="stat-label">当前连胜</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="longest-streak">0</div>
+              <div class="stat-label">最长连胜</div>
             </div>
           </div>
 
           <div class="achievements">
-            <h3>成就徽章</h3>
-            <div id="achievements-list" class="achievements-grid">
-              <div class="achievement-placeholder">暂无成就</div>
+            <h3>成就</h3>
+            <div id="achievements-list" class="achievements-list">
+              <div class="achievement-item">
+                <div class="achievement-icon">🏆</div>
+                <div class="achievement-info">
+                  <div class="achievement-title">首次提交</div>
+                  <div class="achievement-desc">完成第一次代码提交</div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="data-management">
-            <h3>数据管理</h3>
-            <div class="button-group">
-              <button id="add-mock" class="btn btn-outline">添加模拟提交</button>
-              <button id="clear-data" class="btn btn-danger">清空数据</button>
-            </div>
-          </div>
-
-          <div class="loading" id="loading" style="display: none;">
-            <div class="loading-spinner"></div>
-            <p>加载中...</p>
+          <div class="actions">
+            <button id="add-mock-commit" class="btn btn-outline">添加模拟提交</button>
+            <button id="clear-data" class="btn btn-danger">清空数据</button>
           </div>
         </div>
-
         <script nonce="${nonce}" src="${scriptUri}"></script>
       </body>
       </html>`;
