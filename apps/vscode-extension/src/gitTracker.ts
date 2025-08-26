@@ -1,295 +1,267 @@
 import * as vscode from 'vscode';
-// import { CommitHeroAPI } from '@commit-hero/api-client';
+import * as path from 'path';
+import * as fs from 'fs';
 
-interface GitRepository {
-  rootUri: vscode.Uri;
-  state: {
-    head?: {
-      name?: string;
-      commit?: string;
-    };
-  };
-}
-
-interface GitCommit {
+export interface CommitData {
   hash: string;
   message: string;
-  authorName?: string;
-  authorEmail?: string;
-  parents: string[];
+  author: string;
+  email: string;
+  date: string;
+  filesChanged: number;
+  additions: number;
+  deletions: number;
 }
 
-interface GitAPI {
-  repositories: GitRepository[];
-  onDidChangeState: vscode.Event<void>;
+export interface UserStats {
+  totalCommits: number;
+  todayCommits: number;
+  currentStreak: number;
+  bestStreak: number;
+  lastCommitDate: string;
+  achievements: Achievement[];
+}
+
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlockedAt: string;
 }
 
 export class GitTracker {
-  // private api: CommitHeroAPI;
-  private isTracking: boolean = false;
-  private disposables: vscode.Disposable[] = [];
-  private lastCommitHashes: Map<string, string> = new Map();
-  private config: vscode.WorkspaceConfiguration;
+  private context: vscode.ExtensionContext;
+  private trackingActive: boolean = false;
+  private localCommits: CommitData[] = [];
+  private dataFile: string;
 
-  constructor() {
-    this.config = vscode.workspace.getConfiguration('commitHero');
-    // const apiUrl = this.config.get<string>('apiUrl', 'http://localhost:3000');
-    // this.api = new CommitHeroAPI(apiUrl);
+  constructor(context: vscode.ExtensionContext) {
+    this.context = context;
+    this.dataFile = path.join(context.globalStorageUri.fsPath, 'commits.json');
+    this.ensureDataDirectory();
+    this.loadData();
+  }
+
+  private ensureDataDirectory(): void {
+    try {
+      if (!fs.existsSync(this.context.globalStorageUri.fsPath)) {
+        fs.mkdirSync(this.context.globalStorageUri.fsPath, { recursive: true });
+      }
+    } catch (error) {
+      console.error('创建数据目录失败:', error);
+    }
+  }
+
+  private loadData(): void {
+    try {
+      if (fs.existsSync(this.dataFile)) {
+        const data = JSON.parse(fs.readFileSync(this.dataFile, 'utf8'));
+        this.localCommits = data.commits || [];
+        this.trackingActive = data.isTrackingActive || false;
+      } else {
+        this.localCommits = [];
+        this.trackingActive = false;
+      }
+    } catch (error) {
+      console.error('加载数据失败:', error);
+      this.localCommits = [];
+      this.trackingActive = false;
+    }
+  }
+
+  private saveData(): void {
+    try {
+      const data = {
+        commits: this.localCommits,
+        isTrackingActive: this.trackingActive
+      };
+      fs.writeFileSync(this.dataFile, JSON.stringify(data, null, 2));
+    } catch (error) {
+      console.error('保存数据失败:', error);
+    }
   }
 
   public startTracking(): void {
-    if (this.isTracking) {
-      return;
-    }
-
-    this.isTracking = true;
+    this.trackingActive = true;
+    this.saveData();
     console.log('开始追踪 Git 提交');
-
-    // 获取 Git 扩展
-    const gitExtension = vscode.extensions.getExtension('vscode.git')?.exports;
-    if (!gitExtension) {
-      vscode.window.showWarningMessage('Git 扩展未安装或未启用');
-      return;
-    }
-
-    const git = gitExtension.getAPI(1) as GitAPI;
-    if (!git) {
-      vscode.window.showWarningMessage('无法获取 Git API');
-      return;
-    }
-
-    // 追踪现有仓库
-    git.repositories.forEach(repo => {
-      this.trackRepository(repo);
-    });
-
-    // 监听仓库状态变化
-    const stateChangeDisposable = git.onDidChangeState(() => {
-      git.repositories.forEach(repo => {
-        this.trackRepository(repo);
-      });
-    });
-
-    this.disposables.push(stateChangeDisposable);
-
-    // 定期检查新提交
-    const intervalDisposable = vscode.workspace.onDidSaveTextDocument(() => {
-      // 当文件保存时，检查是否有新提交
-      setTimeout(() => {
-        this.checkForNewCommits();
-      }, 1000);
-    });
-
-    this.disposables.push(intervalDisposable);
-
-    vscode.window.showInformationMessage('Git 追踪已开始');
   }
 
   public stopTracking(): void {
-    if (!this.isTracking) {
-      return;
-    }
-
-    this.isTracking = false;
+    this.trackingActive = false;
+    this.saveData();
     console.log('停止追踪 Git 提交');
-
-    // 清理所有订阅
-    this.disposables.forEach(disposable => disposable.dispose());
-    this.disposables = [];
-    this.lastCommitHashes.clear();
-
-    vscode.window.showInformationMessage('Git 追踪已停止');
   }
 
-  private trackRepository(repo: GitRepository): void {
-    const repoPath = repo.rootUri.fsPath;
-    const repoName = this.getRepositoryName(repoPath);
+  public addMockCommit(message?: string, linesAdded?: number, linesDeleted?: number): void {
+    const mockCommit: CommitData = {
+      hash: `mock-${Date.now()}`,
+      message: message || `模拟提交 #${this.localCommits.length + 1}`,
+      author: '本地用户',
+      email: 'local@example.com',
+      date: new Date().toISOString(),
+      filesChanged: Math.floor(Math.random() * 5) + 1,
+      additions: linesAdded || Math.floor(Math.random() * 50) + 1,
+      deletions: linesDeleted || Math.floor(Math.random() * 20)
+    };
 
-    // 获取当前 HEAD 提交
-    if (repo.state.head?.commit) {
-      const currentCommit = repo.state.head.commit;
-      const lastCommit = this.lastCommitHashes.get(repoPath);
+    this.localCommits.push(mockCommit);
+    this.saveData();
+    console.log('添加模拟提交:', mockCommit.message);
+  }
 
-      if (lastCommit && lastCommit !== currentCommit) {
-        // 检测到新提交
-        this.handleNewCommit(repo, repoName, currentCommit);
-      }
+  public getStats(): UserStats {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-      this.lastCommitHashes.set(repoPath, currentCommit);
+    const todayCommits = this.localCommits.filter(commit => {
+      const commitDate = new Date(commit.date);
+      commitDate.setHours(0, 0, 0, 0);
+      return commitDate.getTime() === today.getTime();
+    }).length;
+
+    const totalCommits = this.localCommits.length;
+    const streakInfo = this.calculateStreak();
+    const achievements = this.calculateAchievements();
+
+    return {
+      totalCommits,
+      todayCommits,
+      currentStreak: streakInfo.current,
+      bestStreak: streakInfo.best,
+      lastCommitDate: this.localCommits.length > 0 ? this.localCommits[this.localCommits.length - 1].date : '',
+      achievements
+    };
+  }
+
+  private calculateStreak(): { current: number; best: number } {
+    if (this.localCommits.length === 0) {
+      return { current: 0, best: 0 };
     }
-  }
 
-  private async handleNewCommit(repo: GitRepository, repoName: string, commitHash: string): Promise<void> {
-    try {
-      // 获取提交详情
-      const commitDetails = await this.getCommitDetails(repo, commitHash);
-      if (!commitDetails) {
-        return;
-      }
+    const sortedCommits = [...this.localCommits].sort((a, b) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
 
-      // 获取用户邮箱
-      const userEmail = this.config.get<string>('userEmail');
-      if (!userEmail) {
-        console.warn('用户邮箱未配置');
-        return;
-      }
+    let currentStreak = 0;
+    let bestStreak = 0;
+    let currentStreakCount = 0;
+    let lastDate: Date | null = null;
 
-      // 计算代码行数变化
-      const linesChanged = await this.calculateLinesChanged(repo, commitHash);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-      // 准备提交数据
-      const commitData = {
-        email: userEmail,
-        repository: repoName,
-        commit_hash: commitHash,
-        message: commitDetails.message,
-        lines_added: linesChanged.added,
-        lines_deleted: linesChanged.deleted
-      };
+    for (const commit of sortedCommits) {
+      const commitDate = new Date(commit.date);
+      commitDate.setHours(0, 0, 0, 0);
 
-      // 发送到 API (暂时注释掉用于调试)
-      // const response = await this.api.addCommit(commitData);
-      
-      // 模拟成功响应用于调试
-      console.log('提交已记录 (调试模式):', commitData.message);
-      
-      // 显示通知
-      vscode.window.showInformationMessage(
-        `📝 提交已记录 (调试模式)：${commitData.message}`,
-        '查看统计'
-      ).then(action => {
-        if (action === '查看统计') {
-          vscode.commands.executeCommand('workbench.view.extension.commit-hero-view');
-        }
-      });
+      if (lastDate === null) {
+        currentStreakCount = 1;
+      } else {
+        const diffTime = commitDate.getTime() - lastDate.getTime();
+        const diffDays = diffTime / (1000 * 3600 * 24);
 
-      // 检查是否有新成就 (暂时注释掉)
-      // if (response.data?.newBadges && response.data.newBadges.length > 0) {
-      //   response.data.newBadges.forEach((badge: any) => {
-      //     vscode.window.showInformationMessage(
-      //       `🎉 恭喜！你解锁了新成就：${badge.name}`,
-      //       '查看详情'
-      //     ).then(action => {
-      //       if (action === '查看详情') {
-      //         vscode.commands.executeCommand('workbench.view.extension.commit-hero-view');
-      //       }
-      //     });
-      //   });
-      // }
-
-    } catch (error) {
-      console.error('处理新提交时出错:', error);
-    }
-  }
-
-  private async getCommitDetails(repo: GitRepository, commitHash: string): Promise<GitCommit | null> {
-    try {
-      // 使用 Git 命令获取提交详情
-      const result = await vscode.workspace.fs.readFile(
-        vscode.Uri.joinPath(repo.rootUri, '.git', 'objects', commitHash.substring(0, 2), commitHash.substring(2))
-      );
-
-      // 解析 Git 对象（简化版本）
-      const content = Buffer.from(result).toString('utf8');
-      const lines = content.split('\n');
-      
-      // 查找提交信息
-      let message = '';
-      let authorEmail = '';
-      
-      for (const line of lines) {
-        if (line.startsWith('author ')) {
-          const authorMatch = line.match(/author .* <(.+?)>/);
-          if (authorMatch) {
-            authorEmail = authorMatch[1];
-          }
-        } else if (line.startsWith('committer ')) {
-          // 跳过 committer 行
-        } else if (line === '') {
-          // 空行后是提交消息
-        } else if (message === '') {
-          message = line;
-          break;
+        if (diffDays === 1) {
+          currentStreakCount++;
+        } else if (diffDays > 1) {
+          bestStreak = Math.max(bestStreak, currentStreakCount);
+          currentStreakCount = 1;
         }
       }
 
-      return {
-        hash: commitHash,
-        message: message || 'Unknown commit',
-        authorEmail,
-        parents: []
-      };
-
-    } catch (error) {
-      console.error('获取提交详情失败:', error);
-      return null;
+      lastDate = commitDate;
     }
+
+    bestStreak = Math.max(bestStreak, currentStreakCount);
+
+    // 检查当前是否在今天或昨天有提交
+    if (lastDate) {
+      const diffTime = today.getTime() - lastDate.getTime();
+      const diffDays = diffTime / (1000 * 3600 * 24);
+      
+      if (diffDays <= 1) {
+        currentStreak = currentStreakCount;
+      } else {
+        currentStreak = 0;
+      }
+    }
+
+    return { current: currentStreak, best: bestStreak };
   }
 
-  private async calculateLinesChanged(repo: GitRepository, commitHash: string): Promise<{ added: number; deleted: number }> {
-    try {
-      // 使用 Git 命令获取文件变化统计
-      const { exec } = require('child_process');
-      const util = require('util');
-      const execAsync = util.promisify(exec);
+  private calculateAchievements(): Achievement[] {
+    const stats = this.getStats();
+    const achievements: Achievement[] = [];
 
-      const result = await execAsync(`git show --stat ${commitHash}`, {
-        cwd: repo.rootUri.fsPath
+    // 首次提交成就
+    if (stats.totalCommits >= 1) {
+      achievements.push({
+        id: 'first-commit',
+        name: '首次提交',
+        description: '完成第一次提交',
+        icon: '🎯',
+        unlockedAt: this.localCommits[0]?.date || new Date().toISOString()
       });
-
-      // 解析统计信息
-      const lines = result.stdout.split('\n');
-      let added = 0;
-      let deleted = 0;
-
-      for (const line of lines) {
-        const match = line.match(/(\d+) insertions?\(\+\), (\d+) deletions?\(-\)/);
-        if (match) {
-          added += parseInt(match[1]);
-          deleted += parseInt(match[2]);
-        }
-      }
-
-      return { added, deleted };
-
-    } catch (error) {
-      console.error('计算代码行数变化失败:', error);
-      return { added: 0, deleted: 0 };
-    }
-  }
-
-  private getRepositoryName(repoPath: string): string {
-    // 从路径中提取仓库名称
-    const pathParts = repoPath.split(/[\\/]/);
-    return pathParts[pathParts.length - 1] || 'unknown-repo';
-  }
-
-  private async checkForNewCommits(): Promise<void> {
-    if (!this.isTracking) {
-      return;
     }
 
-    try {
-      const gitExtension = vscode.extensions.getExtension('vscode.git')?.exports;
-      if (!gitExtension) {
-        return;
-      }
-
-      const git = gitExtension.getAPI(1) as GitAPI;
-      if (!git) {
-        return;
-      }
-
-      git.repositories.forEach(repo => {
-        this.trackRepository(repo);
+    // 连续提交成就
+    if (stats.currentStreak >= 3) {
+      achievements.push({
+        id: 'streak-3',
+        name: '连续3天',
+        description: '连续3天有提交',
+        icon: '🔥',
+        unlockedAt: new Date().toISOString()
       });
-
-    } catch (error) {
-      console.error('检查新提交时出错:', error);
     }
+
+    if (stats.currentStreak >= 7) {
+      achievements.push({
+        id: 'streak-7',
+        name: '连续7天',
+        description: '连续7天有提交',
+        icon: '⚡',
+        unlockedAt: new Date().toISOString()
+      });
+    }
+
+    // 总提交数成就
+    if (stats.totalCommits >= 10) {
+      achievements.push({
+        id: 'commits-10',
+        name: '提交达人',
+        description: '累计10次提交',
+        icon: '⭐',
+        unlockedAt: new Date().toISOString()
+      });
+    }
+
+    if (stats.totalCommits >= 50) {
+      achievements.push({
+        id: 'commits-50',
+        name: '提交大师',
+        description: '累计50次提交',
+        icon: '🌟',
+        unlockedAt: new Date().toISOString()
+      });
+    }
+
+    return achievements;
   }
 
-  public getStatus(): boolean {
-    return this.isTracking;
+  public clearData(): void {
+    this.localCommits = [];
+    this.trackingActive = false;
+    this.saveData();
+    console.log('本地数据已清空');
+  }
+
+  public isTracking(): boolean {
+    return this.trackingActive;
+  }
+
+  public getAllCommits(): CommitData[] {
+    return [...this.localCommits];
   }
 }

@@ -1,41 +1,56 @@
 {
   "name": "commit-hero",
   "displayName": "Commit Hero",
-  "description": "开发者效率分析平台 - 追踪代码提交，解锁成就徽章",
+  "description": "本地 Git 提交追踪器 - 记录你的代码贡献并获得成就徽章",
   "version": "1.0.0",
   "publisher": "commit-hero",
   "engines": {
     "vscode": "^1.74.0"
   },
   "categories": [
-    "Other",
-    "SCM Providers"
+    "Other"
   ],
   "keywords": [
     "git",
-    "commit",
-    "analytics",
-    "badges",
+    "commits",
+    "tracking",
     "achievements",
-    "productivity"
+    "badges",
+    "local"
   ],
-  "icon": "resources/icon.png",
-  "galleryBanner": {
-    "color": "#1e1e1e",
-    "theme": "dark"
-  },
   "activationEvents": [
-    "onCommand:commit-hero.startTracking",
     "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "commitHero.startTracking",
+        "title": "开始追踪",
+        "category": "Commit Hero"
+      },
+      {
+        "command": "commitHero.stopTracking",
+        "title": "停止追踪",
+        "category": "Commit Hero"
+      },
+      {
+        "command": "commitHero.openDashboard",
+        "title": "打开仪表板",
+        "category": "Commit Hero"
+      },
+      {
+        "command": "commitHero.addMockCommit",
+        "title": "添加模拟提交",
+        "category": "Commit Hero"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "commit-hero-view",
           "title": "Commit Hero",
-          "icon": "resources/icon.svg"
+          "icon": "$(git-commit)"
         }
       ]
     },
@@ -43,116 +58,18 @@
       "commit-hero-view": [
         {
           "id": "commit-hero-stats",
-          "name": "统计信息",
-          "when": "commitHero.isTracking"
-        },
-        {
-          "id": "commit-hero-badges",
-          "name": "成就徽章",
-          "when": "commitHero.isTracking"
-        }
-      ]
-    },
-    "commands": [
-      {
-        "command": "commit-hero.startTracking",
-        "title": "开始追踪",
-        "category": "Commit Hero",
-        "icon": "$(play)"
-      },
-      {
-        "command": "commit-hero.stopTracking",
-        "title": "停止追踪",
-        "category": "Commit Hero",
-        "icon": "$(stop)"
-      },
-      {
-        "command": "commit-hero.openDashboard",
-        "title": "打开仪表板",
-        "category": "Commit Hero",
-        "icon": "$(dashboard)"
-      },
-      {
-        "command": "commit-hero.showAchievement",
-        "title": "显示成就",
-        "category": "Commit Hero"
-      },
-      {
-        "command": "commit-hero.refreshStats",
-        "title": "刷新统计",
-        "category": "Commit Hero",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "commit-hero.exportData",
-        "title": "导出数据",
-        "category": "Commit Hero",
-        "icon": "$(export)"
-      },
-      {
-        "command": "commit-hero.importData",
-        "title": "导入数据",
-        "category": "Commit Hero",
-        "icon": "$(import)"
-      },
-      {
-        "command": "commit-hero.backupData",
-        "title": "备份数据库",
-        "category": "Commit Hero",
-        "icon": "$(save)"
-      },
-      {
-        "command": "commit-hero.showDataInfo",
-        "title": "数据信息",
-        "category": "Commit Hero",
-        "icon": "$(info)"
-      }
-    ],
-    "menus": {
-      "view/title": [
-        {
-          "command": "commit-hero.startTracking",
-          "when": "view == commit-hero-stats && !commitHero.isTracking",
-          "group": "navigation"
-        },
-        {
-          "command": "commit-hero.stopTracking",
-          "when": "view == commit-hero-stats && commitHero.isTracking",
-          "group": "navigation"
-        },
-        {
-          "command": "commit-hero.refreshStats",
-          "when": "view == commit-hero-stats",
-          "group": "navigation"
-        },
-        {
-          "command": "commit-hero.openDashboard",
-          "when": "view == commit-hero-stats",
-          "group": "navigation"
+          "name": "提交统计",
+          "type": "webview"
         }
       ]
     },
     "configuration": {
       "title": "Commit Hero",
       "properties": {
-        "commitHero.apiUrl": {
-          "type": "string",
-          "default": "http://localhost:3000",
-          "description": "API 服务器地址"
-        },
         "commitHero.userEmail": {
           "type": "string",
-          "description": "用户邮箱地址"
-        },
-        "commitHero.autoTrack": {
-          "type": "boolean",
-          "default": true,
-          "description": "启动时自动开始追踪"
-        },
-        "commitHero.showNotifications": {
-          "type": "boolean",
-          "default": true,
-          "description": "显示成就通知"
+          "default": "",
+          "description": "用于统计的用户邮箱地址"
         }
       }
     }
@@ -160,31 +77,11 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js",
-    "package": "vsce package",
-    "publish": "vsce publish"
+    "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
     "@types/vscode": "^1.74.0",
-    "@types/node": "^18.0.0",
-    "@typescript-eslint/eslint-plugin": "^5.0.0",
-    "@typescript-eslint/parser": "^5.0.0",
-    "eslint": "^8.0.0",
-    "typescript": "^4.9.0",
-    "vsce": "^2.0.0"
-  },
-  "dependencies": {
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/commit-hero/vscode-extension.git"
-  },
-  "bugs": {
-    "url": "https://github.com/commit-hero/vscode-extension/issues"
-  },
-  "homepage": "https://github.com/commit-hero/vscode-extension#readme",
-  "license": "MIT"
+    "@types/node": "16.x",
+    "typescript": "^4.9.4"
+  }
 }
