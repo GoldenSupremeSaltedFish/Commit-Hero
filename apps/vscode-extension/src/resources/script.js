@@ -5,6 +5,7 @@
     // DOM 元素缓存
     const elements = {
         trackingStatus: document.getElementById('tracking-status'),
+        trackingText: document.getElementById('tracking-text'),
         totalCommits: document.getElementById('total-commits'),
         todayCommits: document.getElementById('today-commits'),
         streakDays: document.getElementById('streak-days'),
@@ -70,13 +71,21 @@
     // 更新追踪状态
     function updateTrackingStatus(isTracking) {
         if (elements.trackingStatus) {
-            elements.trackingStatus.textContent = isTracking ? '正在追踪' : '未追踪';
-            elements.trackingStatus.className = isTracking ? 'status-active' : 'status-inactive';
+            elements.trackingStatus.className = isTracking ? 'status-indicator active' : 'status-indicator';
+        }
+        
+        if (elements.trackingText) {
+            elements.trackingText.textContent = isTracking ? '正在追踪' : '未开始追踪';
         }
 
         // 更新按钮状态
-        if (elements.startBtn) elements.startBtn.style.display = isTracking ? 'none' : 'inline-block';
-        if (elements.stopBtn) elements.stopBtn.style.display = isTracking ? 'inline-block' : 'none';
+        if (elements.startBtn) {
+            elements.startBtn.style.display = isTracking ? 'none' : 'inline-block';
+        }
+        if (elements.stopBtn) {
+            elements.stopBtn.style.display = isTracking ? 'inline-block' : 'none';
+            elements.stopBtn.disabled = !isTracking;
+        }
     }
 
     // 更新数据
@@ -89,7 +98,7 @@
         if (elements.totalCommits) elements.totalCommits.textContent = data.totalCommits || 0;
         if (elements.todayCommits) elements.todayCommits.textContent = data.todayCommits || 0;
         if (elements.streakDays) elements.streakDays.textContent = data.currentStreak || 0;
-        if (elements.bestStreak) elements.bestStreak.textContent = data.bestStreak || 0;
+        if (elements.bestStreak) elements.bestStreak.textContent = data.longestStreak || 0;
 
         // 更新成就
         updateAchievements(data.achievements || []);
@@ -107,7 +116,10 @@
         elements.achievements.innerHTML = achievements.map(achievement => `
             <div class="achievement-item" title="${achievement.description}">
                 <span class="achievement-icon">${achievement.icon || '🏆'}</span>
-                <span>${achievement.name}</span>
+                <div class="achievement-info">
+                    <div class="achievement-title">${achievement.name}</div>
+                    <div class="achievement-desc">${achievement.description}</div>
+                </div>
             </div>
         `).join('');
     }

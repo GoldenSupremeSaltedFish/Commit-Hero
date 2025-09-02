@@ -114,9 +114,9 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
       <body>
         <div class="container">
           <header class="header">
-            <h1>Commit Hero</h1>
+            <h1 class="title">Commit Hero</h1>
             <div class="tracking-status">
-              <span id="tracking-indicator" class="status-indicator">●</span>
+              <span id="tracking-status" class="status-indicator">●</span>
               <span id="tracking-text">未开始追踪</span>
             </div>
           </header>
@@ -136,18 +136,18 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
               <div class="stat-label">今日提交</div>
             </div>
             <div class="stat-card">
-              <div class="stat-value" id="current-streak">0</div>
+              <div class="stat-value" id="streak-days">0</div>
               <div class="stat-label">当前连胜</div>
             </div>
             <div class="stat-card">
-              <div class="stat-value" id="longest-streak">0</div>
+              <div class="stat-value" id="best-streak">0</div>
               <div class="stat-label">最长连胜</div>
             </div>
           </div>
 
           <div class="achievements">
-            <h3>成就</h3>
-            <div id="achievements-list" class="achievements-list">
+            <h3 class="section-title">成就</h3>
+            <div id="achievements" class="achievement-list">
               <div class="achievement-item">
                 <div class="achievement-icon">🏆</div>
                 <div class="achievement-info">
@@ -159,9 +159,11 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
           </div>
 
           <div class="actions">
-            <button id="add-mock-commit" class="btn btn-outline">添加模拟提交</button>
+            <button id="add-mock" class="btn btn-outline">添加模拟提交</button>
             <button id="clear-data" class="btn btn-danger">清空数据</button>
           </div>
+
+          <div id="loading" class="loading" style="display: none;">加载中...</div>
         </div>
         <script nonce="${nonce}" src="${scriptUri}"></script>
       </body>
