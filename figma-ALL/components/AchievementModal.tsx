@@ -3,6 +3,7 @@ import { Trophy, Share, Code, Bug, Calendar } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { motion } from 'motion/react';
+import { ImageWithFallback } from './figma/ImageWithFallback';
 
 interface AchievementModalProps {
   onClose: () => void;
@@ -52,9 +53,12 @@ export function AchievementModal({ onClose }: AchievementModalProps) {
           animate={{ scale: isFlipped ? 0.95 : 1 }}
           transition={{ duration: 0.2 }}
         >
-          <div 
-            className="w-full h-full bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full"
+          <ImageWithFallback
+            src="https://images.unsplash.com/photo-1567095761054-7a02e69e5c43?w=160&h=160&fit=crop&crop=center"
+            alt="Achievement Badge"
+            className="w-full h-full object-cover rounded-full"
             style={{
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
               boxShadow: isFlipped ? '0 8px 20px rgba(0, 0, 0, 0.3)' : '0 15px 35px rgba(0, 0, 0, 0.4)'
             }}
           />
