@@ -8,6 +8,7 @@
           "build": "vite build",
           "build:watch": "vite build --watch",
           "build:extension": "npm run build && cd apps/vscode-extension && npm run compile",
+          "compile:extension": "cd apps/vscode-extension && npm run compile",
           "dev:extension": "concurrently \"npm run build:watch\" \"cd apps/vscode-extension && npm run watch\"",
           "clean": "rimraf build",
           "preview": "vite preview"
