@@ -137,6 +137,27 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
       console.log('App.tsx 长度:', appTsxContent.length);
       console.log('globals.css 长度:', globalsCssContent.length);
 
+      // 检查本地 React 资源是否存在
+      const reactAssetsPath = path.join(this._extensionUri.fsPath, 'react-assets');
+      const reactJsPath = path.join(reactAssetsPath, 'react.production.min.js');
+      const reactDomJsPath = path.join(reactAssetsPath, 'react-dom.production.min.js');
+      const babelJsPath = path.join(reactAssetsPath, 'babel.min.js');
+      
+      if (!fs.existsSync(reactJsPath) || !fs.existsSync(reactDomJsPath) || !fs.existsSync(babelJsPath)) {
+        console.log('本地 React 资源不存在，使用fallback HTML');
+        return this._getFallbackHtml(webview);
+      }
+      
+      // 生成本地资源的 webview URI
+      const reactJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'react.production.min.js'));
+      const reactDomJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'react-dom.production.min.js'));
+      const babelJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'babel.min.js'));
+      
+      console.log('使用本地 React 资源');
+      console.log('React JS URI:', reactJsUri);
+      console.log('ReactDOM JS URI:', reactDomJsUri);
+      console.log('Babel JS URI:', babelJsUri);
+
       // 创建完整的 HTML 内容，直接包含 Figma 源码
       const htmlContent = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -166,12 +187,12 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
 <body>
   <div id="root"></div>
   
-  <!-- React 和 ReactDOM CDN -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- React 和 ReactDOM 本地资源 -->
+  <script src="${reactJsUri}"></script>
+  <script src="${reactDomJsUri}"></script>
   
   <!-- Babel 用于 JSX 转换 -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="${babelJsUri}"></script>
   
   <!-- VS Code API 脚本 -->
   <script>
