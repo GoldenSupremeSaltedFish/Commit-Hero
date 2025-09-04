@@ -48,19 +48,30 @@ export function activate(context: vscode.ExtensionContext) {
     );
   });
 
-  // 激活时自动显示视图
-  vscode.commands.executeCommand('workbench.view.extension.commit-hero-view');
+  // 添加显示视图命令
+  const showViewCommand = vscode.commands.registerCommand('commitHero.showView', () => {
+    // 激活 Commit Hero 视图
+    vscode.commands.executeCommand('workbench.view.extension.commit-hero-view');
+    // 显示 webview 视图
+    vscode.commands.executeCommand('commit-hero-stats.focus');
+    vscode.window.showInformationMessage('Commit Hero 视图已激活');
+  });
 
   // 注册所有命令
   context.subscriptions.push(
     startTrackingCommand,
     stopTrackingCommand,
     addMockCommitCommand,
-    showLocalStatsCommand
+    showLocalStatsCommand,
+    showViewCommand
   );
 
-  // 初始化数据
-  provider.refreshData();
+  // 延迟初始化数据，确保 webview 已准备好
+  setTimeout(() => {
+    provider.refreshData();
+  }, 1000);
+
+  console.log('Commit Hero 扩展已完全激活，webview 提供者已注册');
 }
 
 export function deactivate() {

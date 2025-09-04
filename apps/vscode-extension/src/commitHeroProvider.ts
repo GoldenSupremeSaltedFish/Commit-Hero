@@ -21,18 +21,32 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
     context: vscode.WebviewViewResolveContext,
     _token: vscode.CancellationToken
   ) {
+    console.log('resolveWebviewView 被调用，webview 类型:', webviewView.viewType);
+    console.log('webview 标题:', webviewView.title);
+    console.log('webview 可见性:', webviewView.visible);
+    
     this._view = webviewView;
 
     webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [this._extensionUri]
+      localResourceRoots: [
+        this._extensionUri
+      ]
     };
 
-    webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+    console.log('设置 webview HTML 内容...');
+    const htmlContent = this._getHtmlForWebview(webviewView.webview);
+    console.log('HTML 内容长度:', htmlContent.length);
+    console.log('HTML 内容前100字符:', htmlContent.substring(0, 100));
+    
+    webviewView.webview.html = htmlContent;
+    console.log('webview HTML 内容已设置');
 
     webviewView.webview.onDidReceiveMessage(async (data) => {
+      console.log('收到 webview 消息:', data);
       switch (data.type) {
         case 'ready':
+          console.log('webview 发送 ready 消息，设置 webviewReady = true');
           this.webviewReady = true;
           this.refreshData();
           break;
@@ -64,6 +78,8 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
           break;
       }
     });
+    
+    console.log('webview 消息监听器已设置');
   }
 
   public async refreshData(): Promise<void> {
@@ -94,11 +110,12 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
-    // 构建产物的路径
-    const buildPath = path.join(this._extensionUri.fsPath, '..', '..', 'build');
+    // 构建产物的路径 - 现在在扩展目录内
+    const buildPath = path.join(this._extensionUri.fsPath, 'webview-assets');
     
     // 检查构建产物是否存在
     if (!fs.existsSync(buildPath)) {
+      console.log('webview-assets 目录不存在，使用fallback HTML');
       return this._getFallbackHtml(webview);
     }
 
@@ -107,20 +124,24 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
       const htmlPath = path.join(buildPath, 'index.html');
       let htmlContent = fs.readFileSync(htmlPath, 'utf8');
       
+      // 清理HTML内容，移除多余的空行
+      htmlContent = htmlContent.trim();
+      
       // 读取CSS和JS文件
       const cssFiles = fs.readdirSync(path.join(buildPath, 'assets')).filter(file => file.endsWith('.css'));
       const jsFiles = fs.readdirSync(path.join(buildPath, 'assets')).filter(file => file.endsWith('.js'));
       
       if (cssFiles.length === 0 || jsFiles.length === 0) {
+        console.log('CSS或JS文件未找到，使用fallback HTML');
         return this._getFallbackHtml(webview);
       }
 
-      // 替换资源路径为webview URI
+      // 替换资源路径为webview URI - 现在使用扩展目录内的资源
       const cssUri = webview.asWebviewUri(
-        vscode.Uri.joinPath(this._extensionUri, '..', '..', 'build', 'assets', cssFiles[0])
+        vscode.Uri.joinPath(this._extensionUri, 'webview-assets', 'assets', cssFiles[0])
       );
       const jsUri = webview.asWebviewUri(
-        vscode.Uri.joinPath(this._extensionUri, '..', '..', 'build', 'assets', jsFiles[0])
+        vscode.Uri.joinPath(this._extensionUri, 'webview-assets', 'assets', jsFiles[0])
       );
 
       // 注入VS Code API和通信脚本
@@ -146,6 +167,7 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
           
           // 页面加载完成后发送ready消息
           document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, sending ready message');
             // 发送ready消息
             vscode.postMessage({ type: 'ready' });
             
@@ -156,9 +178,11 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
           // 如果DOM已经加载完成，立即发送ready消息
           if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
+              console.log('DOM loading, sending ready message');
               vscode.postMessage({ type: 'ready' });
             });
           } else {
+            console.log('DOM already loaded, sending ready message immediately');
             vscode.postMessage({ type: 'ready' });
           }
         </script>
@@ -167,15 +191,37 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
       // 在</body>标签前插入VS Code脚本
       htmlContent = htmlContent.replace('</body>', `${vscodeScript}</body>`);
       
-      // 替换CSS和JS引用
+      // 替换CSS和JS引用 - 使用完整的webview URI
+      console.log('替换前的HTML内容:', htmlContent);
+      
+      // 更精确的替换 - 修复正则表达式
+      console.log('替换前的HTML内容:', htmlContent);
+      
+      // 替换CSS引用 - 使用相对路径
+      console.log('CSS 替换前:', htmlContent.match(/href="\/assets\/[^"]*\.css"/g));
       htmlContent = htmlContent.replace(
-        /href="[^"]*\.css"/g, 
-        `href="${cssUri}"`
+        /href="\/assets\/[^"]*\.css"/g, 
+        `href="./assets/${cssFiles[0]}"`
       );
+      console.log('CSS 替换后:', htmlContent.match(/href="[^"]*\.css"/g));
+      
+      // 替换JS引用 - 使用相对路径
+      console.log('JS 替换前:', htmlContent.match(/src="\/assets\/[^"]*\.js"/g));
       htmlContent = htmlContent.replace(
-        /src="[^"]*\.js"/g, 
-        `src="${jsUri}"`
+        /src="\/assets\/[^"]*\.js"/g, 
+        `src="./assets/${jsFiles[0]}"`
       );
+      console.log('JS 替换后:', htmlContent.match(/src="[^"]*\.js"/g));
+      
+      console.log('替换后的HTML内容:', htmlContent);
+      
+      console.log('替换后的HTML内容:', htmlContent);
+
+      // 添加调试信息
+      console.log('构建产物路径:', buildPath);
+      console.log('CSS URI:', cssUri);
+      console.log('JS URI:', jsUri);
+      console.log('HTML内容长度:', htmlContent.length);
 
       return htmlContent;
     } catch (error) {

@@ -6,10 +6,11 @@
             "dev": "vite",
             "build": "vite build",
             "build:watch": "vite build --watch",
-            "build:extension": "npm run build && cd apps/vscode-extension && npm run compile",
+            "build:extension": "npm run build && npm run copy:assets && cd apps/vscode-extension && npm run compile",
             "compile:extension": "cd apps/vscode-extension && npm run compile",
             "dev:extension": "concurrently \"npm run build:watch\" \"cd apps/vscode-extension && npm run watch\"",
             "clean": "rimraf build",
+            "copy:assets": "node scripts/copy-assets.js",
             "preview": "vite preview"
       },
       "dependencies": {
@@ -43,6 +44,7 @@
             "clsx": "^2.1.1",
             "cmdk": "^1.1.1",
             "embla-carousel-react": "^8.6.0",
+            "fs-extra": "^11.3.1",
             "input-otp": "^1.4.2",
             "lucide-react": "^0.487.0",
             "motion": "^12.23.12",

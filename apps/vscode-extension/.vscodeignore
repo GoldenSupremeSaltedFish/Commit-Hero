@@ -9,3 +9,5 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 node_modules/**
+# 保留 webview 资源
+!webview-assets/**

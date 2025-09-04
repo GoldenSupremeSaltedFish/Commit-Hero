@@ -19,7 +19,13 @@
     "local"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onCommand:commitHero.startTracking",
+    "onCommand:commitHero.stopTracking",
+    "onCommand:commitHero.showLocalStats",
+    "onCommand:commitHero.addMockCommit",
+    "onCommand:commitHero.showView",
+    "onView:commit-hero-stats"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -43,6 +49,11 @@
         "command": "commitHero.addMockCommit",
         "title": "添加模拟提交",
         "category": "Commit Hero"
+      },
+      {
+        "command": "commitHero.showView",
+        "title": "显示 Commit Hero 视图",
+        "category": "Commit Hero"
       }
     ],
     "viewsContainers": {
@@ -50,7 +61,8 @@
         {
           "id": "commit-hero-view",
           "title": "Commit Hero",
-          "icon": "$(git-commit)"
+          "icon": "$(git-commit)",
+          "when": "true"
         }
       ]
     },
