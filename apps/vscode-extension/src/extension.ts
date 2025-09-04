@@ -39,8 +39,13 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage('已添加模拟提交');
   });
 
-  const openDashboardCommand = vscode.commands.registerCommand('commitHero.openDashboard', () => {
-    vscode.env.openExternal(vscode.Uri.parse('https://commit-hero.example.com'));
+  // 移除外部仪表板命令，改为本地功能
+  const showLocalStatsCommand = vscode.commands.registerCommand('commitHero.showLocalStats', () => {
+    // 显示本地统计信息
+    const stats = gitTracker.getStats();
+    vscode.window.showInformationMessage(
+      `本地统计: ${stats.totalCommits} 次提交, ${stats.streakDays} 天连续, ${stats.achievements.length} 个成就`
+    );
   });
 
   // 激活时自动显示视图
@@ -51,7 +56,7 @@ export function activate(context: vscode.ExtensionContext) {
     startTrackingCommand,
     stopTrackingCommand,
     addMockCommitCommand,
-    openDashboardCommand
+    showLocalStatsCommand
   );
 
   // 初始化数据

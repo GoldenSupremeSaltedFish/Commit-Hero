@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { GitTracker } from './gitTracker';
+import * as path from 'path';
+import * as fs from 'fs';
 
 export class CommitHeroProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'commit-hero-stats';
@@ -92,6 +94,97 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
+    // 构建产物的路径
+    const buildPath = path.join(this._extensionUri.fsPath, '..', '..', 'build');
+    
+    // 检查构建产物是否存在
+    if (!fs.existsSync(buildPath)) {
+      return this._getFallbackHtml(webview);
+    }
+
+    try {
+      // 读取构建后的HTML文件
+      const htmlPath = path.join(buildPath, 'index.html');
+      let htmlContent = fs.readFileSync(htmlPath, 'utf8');
+      
+      // 读取CSS和JS文件
+      const cssFiles = fs.readdirSync(path.join(buildPath, 'assets')).filter(file => file.endsWith('.css'));
+      const jsFiles = fs.readdirSync(path.join(buildPath, 'assets')).filter(file => file.endsWith('.js'));
+      
+      if (cssFiles.length === 0 || jsFiles.length === 0) {
+        return this._getFallbackHtml(webview);
+      }
+
+      // 替换资源路径为webview URI
+      const cssUri = webview.asWebviewUri(
+        vscode.Uri.joinPath(this._extensionUri, '..', '..', 'build', 'assets', cssFiles[0])
+      );
+      const jsUri = webview.asWebviewUri(
+        vscode.Uri.joinPath(this._extensionUri, '..', '..', 'build', 'assets', jsFiles[0])
+      );
+
+      // 注入VS Code API和通信脚本
+      const vscodeScript = `
+        <script>
+          // VS Code API
+          const vscode = acquireVsCodeApi();
+          
+          // 通信函数
+          window.vscodeAPI = {
+            postMessage: (message) => vscode.postMessage(message),
+            getState: () => vscode.getState(),
+            setState: (state) => vscode.setState(state)
+          };
+          
+          // 监听来自VS Code的消息
+          window.addEventListener('message', (event) => {
+            const message = event.data;
+            if (window.handleVSCodeMessage) {
+              window.handleVSCodeMessage(message);
+            }
+          });
+          
+          // 页面加载完成后发送ready消息
+          document.addEventListener('DOMContentLoaded', () => {
+            // 发送ready消息
+            vscode.postMessage({ type: 'ready' });
+            
+            // 请求Git统计信息
+            vscode.postMessage({ type: 'getGitStats' });
+          });
+          
+          // 如果DOM已经加载完成，立即发送ready消息
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+              vscode.postMessage({ type: 'ready' });
+            });
+          } else {
+            vscode.postMessage({ type: 'ready' });
+          }
+        </script>
+      `;
+
+      // 在</body>标签前插入VS Code脚本
+      htmlContent = htmlContent.replace('</body>', `${vscodeScript}</body>`);
+      
+      // 替换CSS和JS引用
+      htmlContent = htmlContent.replace(
+        /href="[^"]*\.css"/g, 
+        `href="${cssUri}"`
+      );
+      htmlContent = htmlContent.replace(
+        /src="[^"]*\.js"/g, 
+        `src="${jsUri}"`
+      );
+
+      return htmlContent;
+    } catch (error) {
+      console.error('加载构建产物失败:', error);
+      return this._getFallbackHtml(webview);
+    }
+  }
+
+  private _getFallbackHtml(webview: vscode.Webview) {
     return `<!DOCTYPE html>
       <html lang="zh-CN">
       <head>

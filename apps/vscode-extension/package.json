@@ -35,8 +35,8 @@
         "category": "Commit Hero"
       },
       {
-        "command": "commitHero.openDashboard",
-        "title": "打开仪表板",
+        "command": "commitHero.showLocalStats",
+        "title": "显示本地统计",
         "category": "Commit Hero"
       },
       {
