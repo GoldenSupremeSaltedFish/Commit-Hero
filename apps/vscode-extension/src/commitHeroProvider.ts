@@ -110,118 +110,121 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
-    // 构建产物的路径 - 现在在扩展目录内
-    const buildPath = path.join(this._extensionUri.fsPath, 'webview-assets');
+    // 直接使用 Figma 源码路径
+    const figmaSourcePath = path.join(__dirname, '..', '..', '..', 'figma-ALL');
     
-    // 检查构建产物是否存在
-    if (!fs.existsSync(buildPath)) {
-      console.log('webview-assets 目录不存在，使用fallback HTML');
+    // 检查 Figma 源码是否存在
+    if (!fs.existsSync(figmaSourcePath)) {
+      console.log('figma-ALL 目录不存在，使用fallback HTML');
       return this._getFallbackHtml(webview);
     }
 
     try {
-      // 读取构建后的HTML文件
-      const htmlPath = path.join(buildPath, 'index.html');
-      let htmlContent = fs.readFileSync(htmlPath, 'utf8');
+      // 读取 Figma 源码文件
+      const appTsxPath = path.join(figmaSourcePath, 'App.tsx');
+      const globalsCssPath = path.join(figmaSourcePath, 'globals.css');
       
-      // 清理HTML内容，移除多余的空行
-      htmlContent = htmlContent.trim();
-      
-      // 读取CSS和JS文件
-      const cssFiles = fs.readdirSync(path.join(buildPath, 'assets')).filter(file => file.endsWith('.css'));
-      const jsFiles = fs.readdirSync(path.join(buildPath, 'assets')).filter(file => file.endsWith('.js'));
-      
-      if (cssFiles.length === 0 || jsFiles.length === 0) {
-        console.log('CSS或JS文件未找到，使用fallback HTML');
+      if (!fs.existsSync(appTsxPath) || !fs.existsSync(globalsCssPath)) {
+        console.log('Figma 源码文件未找到，使用fallback HTML');
         return this._getFallbackHtml(webview);
       }
 
-      // 替换资源路径为webview URI - 现在使用扩展目录内的资源
-      const cssUri = webview.asWebviewUri(
-        vscode.Uri.joinPath(this._extensionUri, 'webview-assets', 'assets', cssFiles[0])
-      );
-      const jsUri = webview.asWebviewUri(
-        vscode.Uri.joinPath(this._extensionUri, 'webview-assets', 'assets', jsFiles[0])
-      );
+      // 读取 App.tsx 和 globals.css
+      const appTsxContent = fs.readFileSync(appTsxPath, 'utf8');
+      const globalsCssContent = fs.readFileSync(globalsCssPath, 'utf8');
+      
+      console.log('成功读取 Figma 源码文件');
+      console.log('App.tsx 长度:', appTsxContent.length);
+      console.log('globals.css 长度:', globalsCssContent.length);
 
-      // 注入VS Code API和通信脚本
-      const vscodeScript = `
-        <script>
-          // VS Code API
-          const vscode = acquireVsCodeApi();
-          
-          // 通信函数
-          window.vscodeAPI = {
-            postMessage: (message) => vscode.postMessage(message),
-            getState: () => vscode.getState(),
-            setState: (state) => vscode.setState(state)
-          };
-          
-          // 监听来自VS Code的消息
-          window.addEventListener('message', (event) => {
-            const message = event.data;
-            if (window.handleVSCodeMessage) {
-              window.handleVSCodeMessage(message);
-            }
-          });
-          
-          // 页面加载完成后发送ready消息
-          document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded, sending ready message');
-            // 发送ready消息
-            vscode.postMessage({ type: 'ready' });
-            
-            // 请求Git统计信息
-            vscode.postMessage({ type: 'getGitStats' });
-          });
-          
-          // 如果DOM已经加载完成，立即发送ready消息
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-              console.log('DOM loading, sending ready message');
-              vscode.postMessage({ type: 'ready' });
-            });
-          } else {
-            console.log('DOM already loaded, sending ready message immediately');
-            vscode.postMessage({ type: 'ready' });
-          }
-        </script>
-      `;
+      // 创建完整的 HTML 内容，直接包含 Figma 源码
+      const htmlContent = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commit Hero - Figma 设计</title>
+  <style>
+    ${globalsCssContent}
+    
+    /* VSCode 主题适配 */
+    body {
+      background: var(--vscode-editor-background);
+      color: var(--vscode-foreground);
+      font-family: var(--vscode-font-family);
+      margin: 0;
+      padding: 0;
+    }
+    
+    /* 确保组件在 VSCode 中正确显示 */
+    #root {
+      min-height: 100vh;
+      background: var(--vscode-editor-background);
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <!-- React 和 ReactDOM CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel 用于 JSX 转换 -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- VS Code API 脚本 -->
+  <script>
+    // VS Code API
+    const vscode = acquireVsCodeApi();
+    
+    // 通信函数
+    window.vscodeAPI = {
+      postMessage: (message) => vscode.postMessage(message),
+      getState: () => vscode.getState(),
+      setState: (state) => vscode.setState(state)
+    };
+    
+    // 监听来自VS Code的消息
+    window.addEventListener('message', (event) => {
+      const message = event.data;
+      if (window.handleVSCodeMessage) {
+        window.handleVSCodeMessage(message);
+      }
+    });
+    
+    // 页面加载完成后发送ready消息
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOM loaded, sending ready message');
+      vscode.postMessage({ type: 'ready' });
+      vscode.postMessage({ type: 'getGitStats' });
+    });
+    
+    // 如果DOM已经加载完成，立即发送ready消息
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM loading, sending ready message');
+        vscode.postMessage({ type: 'ready' });
+      });
+    } else {
+      console.log('DOM already loaded, sending ready message immediately');
+      vscode.postMessage({ type: 'ready' });
+    }
+  </script>
+  
+  <!-- Figma 组件脚本 -->
+  <script type="text/babel" data-type="module">
+    ${appTsxContent}
+    
+    // 渲染应用
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
+  </script>
+</body>
+</html>`;
 
-      // 在</body>标签前插入VS Code脚本
-      htmlContent = htmlContent.replace('</body>', `${vscodeScript}</body>`);
-      
-      // 替换CSS和JS引用 - 使用完整的webview URI
-      console.log('替换前的HTML内容:', htmlContent);
-      
-      // 更精确的替换 - 修复正则表达式
-      console.log('替换前的HTML内容:', htmlContent);
-      
-      // 替换CSS引用 - 使用webview URI
-      console.log('CSS 替换前:', htmlContent.match(/href="\/assets\/[^"]*\.css"/g));
-      htmlContent = htmlContent.replace(
-        /href="\/assets\/[^"]*\.css"/g, 
-        `href="${cssUri}"`
-      );
-      console.log('CSS 替换后:', htmlContent.match(/href="[^"]*\.css"/g));
-      
-      // 替换JS引用 - 使用webview URI
-      console.log('JS 替换前:', htmlContent.match(/src="\/assets\/[^"]*\.js"/g));
-      htmlContent = htmlContent.replace(
-        /src="\/assets\/[^"]*\.js"/g, 
-        `src="${jsUri}"`
-      );
-      console.log('JS 替换后:', htmlContent.match(/src="[^"]*\.js"/g));
-      
-      console.log('替换后的HTML内容:', htmlContent);
-      
-      console.log('替换后的HTML内容:', htmlContent);
-
-      // 添加调试信息
-      console.log('构建产物路径:', buildPath);
-      console.log('CSS URI:', cssUri);
-      console.log('JS URI:', jsUri);
-      console.log('HTML内容长度:', htmlContent.length);
+      console.log('生成的 HTML 内容长度:', htmlContent.length);
+      console.log('HTML 内容前200字符:', htmlContent.substring(0, 200));
 
       return htmlContent;
     } catch (error) {
