@@ -197,19 +197,19 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
       // 更精确的替换 - 修复正则表达式
       console.log('替换前的HTML内容:', htmlContent);
       
-      // 替换CSS引用 - 使用相对路径
+      // 替换CSS引用 - 使用webview URI
       console.log('CSS 替换前:', htmlContent.match(/href="\/assets\/[^"]*\.css"/g));
       htmlContent = htmlContent.replace(
         /href="\/assets\/[^"]*\.css"/g, 
-        `href="./assets/${cssFiles[0]}"`
+        `href="${cssUri}"`
       );
       console.log('CSS 替换后:', htmlContent.match(/href="[^"]*\.css"/g));
       
-      // 替换JS引用 - 使用相对路径
+      // 替换JS引用 - 使用webview URI
       console.log('JS 替换前:', htmlContent.match(/src="\/assets\/[^"]*\.js"/g));
       htmlContent = htmlContent.replace(
         /src="\/assets\/[^"]*\.js"/g, 
-        `src="./assets/${jsFiles[0]}"`
+        `src="${jsUri}"`
       );
       console.log('JS 替换后:', htmlContent.match(/src="[^"]*\.js"/g));
       
