@@ -7,7 +7,9 @@
             "build": "vite build",
             "build:watch": "vite build --watch",
             "download:react": "node scripts/download-react-assets.js",
-            "build:extension": "npm run download:react && npm run build && npm run copy:assets && cd apps/vscode-extension && npm run compile",
+            "sync:figma": "node scripts/sync-figma-to-extension.js sync",
+            "sync:figma:watch": "node scripts/sync-figma-to-extension.js watch",
+            "build:extension": "npm run sync:figma && npm run download:react && npm run build && npm run copy:assets && cd apps/vscode-extension && npm run compile",
             "compile:extension": "cd apps/vscode-extension && npm run compile",
             "dev:extension": "concurrently \"npm run build:watch\" \"cd apps/vscode-extension && npm run watch\"",
             "clean": "rimraf build",
@@ -63,6 +65,7 @@
       "devDependencies": {
             "@types/node": "^20.10.0",
             "@vitejs/plugin-react-swc": "^3.10.2",
+            "chokidar": "^4.0.3",
             "concurrently": "^8.2.2",
             "rimraf": "^5.0.5",
             "vite": "6.3.5"

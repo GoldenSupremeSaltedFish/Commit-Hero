@@ -110,30 +110,34 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
-    // 直接使用 Figma 源码路径
-    const figmaSourcePath = path.join(__dirname, '..', '..', '..', 'figma-ALL');
+    // 使用本地 figma-frontend 路径
+    const figmaSourcePath = path.join(__dirname, '..', 'figma-frontend');
     
-    // 检查 Figma 源码是否存在
+    // 检查本地 figma-frontend 是否存在
     if (!fs.existsSync(figmaSourcePath)) {
-      console.log('figma-ALL 目录不存在，使用fallback HTML');
+      console.log('本地 figma-frontend 目录不存在，使用fallback HTML');
       return this._getFallbackHtml(webview);
     }
 
     try {
-      // 读取 Figma 源码文件
-      const appTsxPath = path.join(figmaSourcePath, 'App.tsx');
+      // 读取 Figma 源码文件 - 优先使用简化版本
+      const appTsxPath = path.join(figmaSourcePath, 'App-simple.tsx');
+      const fallbackAppTsxPath = path.join(figmaSourcePath, 'App.tsx');
       const globalsCssPath = path.join(figmaSourcePath, 'globals.css');
       
-      if (!fs.existsSync(appTsxPath) || !fs.existsSync(globalsCssPath)) {
-        console.log('Figma 源码文件未找到，使用fallback HTML');
+      // 检查简化版本是否存在，否则使用原版本
+      const finalAppTsxPath = fs.existsSync(appTsxPath) ? appTsxPath : fallbackAppTsxPath;
+      
+      if (!fs.existsSync(finalAppTsxPath) || !fs.existsSync(globalsCssPath)) {
+        console.log('本地 Figma 源码文件未找到，使用fallback HTML');
         return this._getFallbackHtml(webview);
       }
 
       // 读取 App.tsx 和 globals.css
-      const appTsxContent = fs.readFileSync(appTsxPath, 'utf8');
+      const appTsxContent = fs.readFileSync(finalAppTsxPath, 'utf8');
       const globalsCssContent = fs.readFileSync(globalsCssPath, 'utf8');
       
-      console.log('成功读取 Figma 源码文件');
+      console.log('成功读取本地 Figma 源码文件');
       console.log('App.tsx 长度:', appTsxContent.length);
       console.log('globals.css 长度:', globalsCssContent.length);
 
@@ -142,8 +146,11 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
       const reactJsPath = path.join(reactAssetsPath, 'react.production.min.js');
       const reactDomJsPath = path.join(reactAssetsPath, 'react-dom.production.min.js');
       const babelJsPath = path.join(reactAssetsPath, 'babel.min.js');
+      const lucideJsPath = path.join(reactAssetsPath, 'lucide-react.js');
+      const motionJsPath = path.join(reactAssetsPath, 'motion.js');
       
-      if (!fs.existsSync(reactJsPath) || !fs.existsSync(reactDomJsPath) || !fs.existsSync(babelJsPath)) {
+      if (!fs.existsSync(reactJsPath) || !fs.existsSync(reactDomJsPath) || !fs.existsSync(babelJsPath) || 
+          !fs.existsSync(lucideJsPath) || !fs.existsSync(motionJsPath)) {
         console.log('本地 React 资源不存在，使用fallback HTML');
         return this._getFallbackHtml(webview);
       }
@@ -152,11 +159,15 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
       const reactJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'react.production.min.js'));
       const reactDomJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'react-dom.production.min.js'));
       const babelJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'babel.min.js'));
+      const lucideJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'lucide-react.js'));
+      const motionJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'motion.js'));
       
       console.log('使用本地 React 资源');
       console.log('React JS URI:', reactJsUri);
       console.log('ReactDOM JS URI:', reactDomJsUri);
       console.log('Babel JS URI:', babelJsUri);
+      console.log('Lucide JS URI:', lucideJsUri);
+      console.log('Motion JS URI:', motionJsUri);
 
       // 创建完整的 HTML 内容，直接包含 Figma 源码
       const htmlContent = `<!DOCTYPE html>
@@ -193,6 +204,12 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
   
   <!-- Babel 用于 JSX 转换 -->
   <script src="${babelJsUri}"></script>
+  
+  <!-- Lucide React 图标库 -->
+  <script src="${lucideJsUri}"></script>
+  
+  <!-- Motion 动画库 -->
+  <script src="${motionJsUri}"></script>
   
   <!-- VS Code API 脚本 -->
   <script>

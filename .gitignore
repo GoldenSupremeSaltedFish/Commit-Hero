@@ -180,3 +180,181 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# ===========================================
+# Commit Hero 项目特定忽略规则
+# ===========================================
+
+# VSCode 扩展构建产物
+apps/vscode-extension/out/
+apps/vscode-extension/*.vsix
+apps/vscode-extension/.vscode-test/
+
+# 同步后的前端代码（应该从 figma-ALL 同步生成）
+apps/vscode-extension/figma-frontend/
+
+# React 运行时资源（应该通过脚本下载）
+apps/vscode-extension/react-assets/
+
+# Webview 资源（应该通过构建生成）
+apps/vscode-extension/webview-assets/
+
+# 同步报告和日志
+sync-report.json
+*.sync.log
+
+# 临时构建文件
+apps/vscode-extension/scripts/temp/
+apps/vscode-extension/scripts/cache/
+
+# 开发时的临时文件
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# 测试覆盖率报告
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+
+# 本地数据库文件
+apps/web/data/commit-hero.db
+*.db
+*.sqlite
+*.sqlite3
+
+# 环境配置文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 包管理器锁文件（保留 package-lock.json 用于生产）
+# yarn.lock
+# pnpm-lock.yaml
+
+# IDE 配置文件（保留必要的调试配置）
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries/
+.idea/shelf/
+
+# 构建缓存
+.cache/
+.parcel-cache/
+.vite/
+.turbo/
+
+# 依赖目录
+node_modules/
+jspm_packages/
+
+# 日志文件
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# 运行时文件
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# 可选缓存目录
+.npm/
+.eslintcache/
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# 可选 REPL 历史
+.node_repl_history
+
+# 输出目录
+dist/
+build/
+out/
+
+# 临时目录
+tmp/
+temp/
+
+# 系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Windows 特定
+*.lnk
+
+# Linux 特定
+*~
+
+# macOS 特定
+.AppleDouble
+.LSOverride
+Icon
+.DocumentRevisions-V100
+.fseventsd
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# 版本控制
+.svn/
+.hg/
+.bzr/
+
+# 压缩文件
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# 文档生成
+docs/_build/
+docs/.doctrees/
+
+# 备份文件
+*.orig
+*.rej
+*~
+
+# 编辑器临时文件
+*.swp
+*.swo
+*~
+
+# 项目特定
+# 保留以下文件：
+# - figma-ALL/ (设计源码)
+# - apps/vscode-extension/src/ (扩展源码)
+# - scripts/ (构建脚本)
+# - docs/ (文档)
+# - package.json (依赖配置)
+# - tsconfig.json (TypeScript 配置)

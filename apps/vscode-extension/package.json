@@ -89,7 +89,9 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "build:standalone": "node scripts/build-standalone.js",
+    "download:react": "node scripts/build-standalone.js"
   },
   "devDependencies": {
     "@types/vscode": "^1.74.0",

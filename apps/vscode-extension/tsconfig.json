@@ -18,6 +18,10 @@
   },
   "exclude": [
     "node_modules",
-    ".vscode-test"
+    ".vscode-test",
+    "figma-frontend",
+    "react-assets",
+    "webview-assets",
+    "scripts"
   ]
 }

@@ -1,0 +1,111 @@
+# ===========================================
+# Commit Hero 项目 Git 属性配置
+# ===========================================
+
+# 确保所有文本文件使用 LF 换行符
+* text=auto eol=lf
+
+# 明确指定文本文件
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.xml text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.less text eol=lf
+*.svg text eol=lf
+
+# 二进制文件
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.rar binary
+*.7z binary
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+
+# 包管理器文件
+package-lock.json text eol=lf
+yarn.lock text eol=lf
+pnpm-lock.yaml text eol=lf
+
+# 配置文件
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.editorconfig text eol=lf
+.eslintrc.* text eol=lf
+.prettierrc.* text eol=lf
+tsconfig.json text eol=lf
+vite.config.* text eol=lf
+next.config.* text eol=lf
+
+# 文档文件
+*.md text eol=lf
+docs/**/*.md text eol=lf
+README* text eol=lf
+CHANGELOG* text eol=lf
+LICENSE* text eol=lf
+
+# 脚本文件
+scripts/**/*.js text eol=lf
+scripts/**/*.ts text eol=lf
+scripts/**/*.sh text eol=lf
+scripts/**/*.bat text eol=lf
+scripts/**/*.ps1 text eol=lf
+
+# VSCode 扩展文件
+apps/vscode-extension/src/**/*.ts text eol=lf
+apps/vscode-extension/src/**/*.tsx text eol=lf
+apps/vscode-extension/package.json text eol=lf
+apps/vscode-extension/tsconfig.json text eol=lf
+
+# Figma 设计文件
+figma-ALL/**/*.tsx text eol=lf
+figma-ALL/**/*.ts text eol=lf
+figma-ALL/**/*.css text eol=lf
+figma-ALL/**/*.md text eol=lf
+
+# 排除构建产物和依赖
+apps/vscode-extension/out/** -text
+apps/vscode-extension/figma-frontend/** -text
+apps/vscode-extension/react-assets/** -text
+apps/vscode-extension/webview-assets/** -text
+node_modules/** -text
+build/** -text
+dist/** -text
+
+# 语言检测
+*.ts linguist-language=TypeScript
+*.tsx linguist-language=TypeScript
+*.js linguist-language=JavaScript
+*.jsx linguist-language=JavaScript
+*.json linguist-language=JSON
+*.md linguist-language=Markdown
+*.css linguist-language=CSS
+*.html linguist-language=HTML
+*.svg linguist-language=SVG
+
+# 大文件处理
+*.db filter=lfs diff=lfs merge=lfs -text
+*.sqlite filter=lfs diff=lfs merge=lfs -text
+*.sqlite3 filter=lfs diff=lfs merge=lfs -text
+*.vsix filter=lfs diff=lfs merge=lfs -text
