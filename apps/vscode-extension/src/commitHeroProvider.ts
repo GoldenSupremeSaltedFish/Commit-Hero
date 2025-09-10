@@ -1,7 +1,7 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { GitTracker } from './gitTracker';
-import * as path from 'path';
-import * as fs from 'fs';
 
 export class CommitHeroProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'commit-hero-stats';
@@ -24,25 +24,23 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
     console.log('resolveWebviewView 被调用，webview 类型:', webviewView.viewType);
     console.log('webview 标题:', webviewView.title);
     console.log('webview 可见性:', webviewView.visible);
-    
+
     this._view = webviewView;
 
     webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [
-        this._extensionUri
-      ]
+      localResourceRoots: [this._extensionUri],
     };
 
     console.log('设置 webview HTML 内容...');
     const htmlContent = this._getHtmlForWebview(webviewView.webview);
     console.log('HTML 内容长度:', htmlContent.length);
     console.log('HTML 内容前100字符:', htmlContent.substring(0, 100));
-    
+
     webviewView.webview.html = htmlContent;
     console.log('webview HTML 内容已设置');
 
-    webviewView.webview.onDidReceiveMessage(async (data) => {
+    webviewView.webview.onDidReceiveMessage(async data => {
       console.log('收到 webview 消息:', data);
       switch (data.type) {
         case 'ready':
@@ -73,12 +71,12 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
           const stats = this.gitTracker?.getStats();
           webviewView.webview.postMessage({
             type: 'gitStatsResponse',
-            data: stats
+            data: stats,
           });
           break;
       }
     });
-    
+
     console.log('webview 消息监听器已设置');
   }
 
@@ -90,10 +88,10 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
 
     try {
       const stats = this.gitTracker?.getStats();
-      
+
       this._view.webview.postMessage({
         type: 'updateData',
-        data: stats
+        data: stats,
       });
     } catch (error) {
       console.error('获取数据失败:', error);
@@ -104,7 +102,7 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
     if (this._view && this.webviewReady) {
       this._view.webview.postMessage({
         type: 'updateTrackingStatus',
-        isTracking
+        isTracking,
       });
     }
   }
@@ -112,7 +110,7 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
   private _getHtmlForWebview(webview: vscode.Webview) {
     // 使用本地 figma-frontend 路径
     const figmaSourcePath = path.join(__dirname, '..', 'figma-frontend');
-    
+
     // 检查本地 figma-frontend 是否存在
     if (!fs.existsSync(figmaSourcePath)) {
       console.log('本地 figma-frontend 目录不存在，使用fallback HTML');
@@ -120,14 +118,13 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
     }
 
     try {
-      // 读取 Figma 源码文件 - 优先使用简化版本
-      const appTsxPath = path.join(figmaSourcePath, 'App-simple.tsx');
-      const fallbackAppTsxPath = path.join(figmaSourcePath, 'App.tsx');
+      // 读取 Figma 源码文件 - 使用完整版本
+      const appTsxPath = path.join(figmaSourcePath, 'App.tsx');
       const globalsCssPath = path.join(figmaSourcePath, 'globals.css');
-      
-      // 检查简化版本是否存在，否则使用原版本
-      const finalAppTsxPath = fs.existsSync(appTsxPath) ? appTsxPath : fallbackAppTsxPath;
-      
+
+      // 使用完整版本
+      const finalAppTsxPath = appTsxPath;
+
       if (!fs.existsSync(finalAppTsxPath) || !fs.existsSync(globalsCssPath)) {
         console.log('本地 Figma 源码文件未找到，使用fallback HTML');
         return this._getFallbackHtml(webview);
@@ -136,7 +133,7 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
       // 读取 App.tsx 和 globals.css
       const appTsxContent = fs.readFileSync(finalAppTsxPath, 'utf8');
       const globalsCssContent = fs.readFileSync(globalsCssPath, 'utf8');
-      
+
       console.log('成功读取本地 Figma 源码文件');
       console.log('App.tsx 长度:', appTsxContent.length);
       console.log('globals.css 长度:', globalsCssContent.length);
@@ -148,20 +145,37 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
       const babelJsPath = path.join(reactAssetsPath, 'babel.min.js');
       const lucideJsPath = path.join(reactAssetsPath, 'lucide-react.js');
       const motionJsPath = path.join(reactAssetsPath, 'motion.js');
-      
-      if (!fs.existsSync(reactJsPath) || !fs.existsSync(reactDomJsPath) || !fs.existsSync(babelJsPath) || 
-          !fs.existsSync(lucideJsPath) || !fs.existsSync(motionJsPath)) {
-        console.log('本地 React 资源不存在，使用fallback HTML');
+
+      if (
+        !fs.existsSync(reactJsPath) ||
+        !fs.existsSync(reactDomJsPath) ||
+        !fs.existsSync(babelJsPath) ||
+        !fs.existsSync(lucideJsPath)
+      ) {
+        console.log('本地 React 核心资源不存在，使用fallback HTML');
         return this._getFallbackHtml(webview);
       }
-      
+
+      // motion.js 是可选的，如果不存在就跳过
+      const motionExists = fs.existsSync(motionJsPath) && fs.statSync(motionJsPath).size > 0;
+
       // 生成本地资源的 webview URI
-      const reactJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'react.production.min.js'));
-      const reactDomJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'react-dom.production.min.js'));
-      const babelJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'babel.min.js'));
-      const lucideJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'lucide-react.js'));
-      const motionJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'motion.js'));
-      
+      const reactJsUri = webview.asWebviewUri(
+        vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'react.production.min.js')
+      );
+      const reactDomJsUri = webview.asWebviewUri(
+        vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'react-dom.production.min.js')
+      );
+      const babelJsUri = webview.asWebviewUri(
+        vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'babel.min.js')
+      );
+      const lucideJsUri = webview.asWebviewUri(
+        vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'lucide-react.js')
+      );
+      const motionJsUri = webview.asWebviewUri(
+        vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'motion.js')
+      );
+
       console.log('使用本地 React 资源');
       console.log('React JS URI:', reactJsUri);
       console.log('ReactDOM JS URI:', reactDomJsUri);
@@ -178,7 +192,7 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
   <title>Commit Hero - Figma 设计</title>
   <style>
     ${globalsCssContent}
-    
+
     /* VSCode 主题适配 */
     body {
       background: var(--vscode-editor-background);
@@ -187,7 +201,7 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
       margin: 0;
       padding: 0;
     }
-    
+
     /* 确保组件在 VSCode 中正确显示 */
     #root {
       min-height: 100vh;
@@ -197,32 +211,36 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
 </head>
 <body>
   <div id="root"></div>
-  
+
   <!-- React 和 ReactDOM 本地资源 -->
   <script src="${reactJsUri}"></script>
   <script src="${reactDomJsUri}"></script>
-  
+
   <!-- Babel 用于 JSX 转换 -->
   <script src="${babelJsUri}"></script>
-  
+
   <!-- Lucide React 图标库 -->
   <script src="${lucideJsUri}"></script>
-  
-  <!-- Motion 动画库 -->
-  <script src="${motionJsUri}"></script>
-  
+
+  ${
+    motionExists
+      ? `<!-- Motion 动画库 -->
+  <script src="${motionJsUri}"></script>`
+      : '<!-- Motion 动画库不可用，跳过 -->'
+  }
+
   <!-- VS Code API 脚本 -->
   <script>
     // VS Code API
     const vscode = acquireVsCodeApi();
-    
+
     // 通信函数
     window.vscodeAPI = {
       postMessage: (message) => vscode.postMessage(message),
       getState: () => vscode.getState(),
       setState: (state) => vscode.setState(state)
     };
-    
+
     // 监听来自VS Code的消息
     window.addEventListener('message', (event) => {
       const message = event.data;
@@ -230,14 +248,14 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
         window.handleVSCodeMessage(message);
       }
     });
-    
+
     // 页面加载完成后发送ready消息
     document.addEventListener('DOMContentLoaded', () => {
       console.log('DOM loaded, sending ready message');
       vscode.postMessage({ type: 'ready' });
       vscode.postMessage({ type: 'getGitStats' });
     });
-    
+
     // 如果DOM已经加载完成，立即发送ready消息
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
@@ -249,11 +267,11 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
       vscode.postMessage({ type: 'ready' });
     }
   </script>
-  
+
   <!-- Figma 组件脚本 -->
   <script type="text/babel" data-type="module">
     ${appTsxContent}
-    
+
     // 渲染应用
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(React.createElement(App));
@@ -279,8 +297,8 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Commit Hero - 本地统计</title>
         <style>
-          body { 
-            font-family: var(--vscode-font-family); 
+          body {
+            font-family: var(--vscode-font-family);
             color: var(--vscode-foreground);
             background: var(--vscode-editor-background);
             padding: 20px;
@@ -394,11 +412,11 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
             <h2>🎯 Commit Hero</h2>
             <p>本地 Git 提交统计</p>
           </div>
-          
+
           <div id="status" class="status not-tracking">
             未在追踪
           </div>
-          
+
           <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-value" id="total-commits">0</div>
@@ -417,7 +435,7 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
               <div class="stat-label">成就数量</div>
             </div>
           </div>
-          
+
           <div class="achievements" id="achievements">
             <h3>🏆 成就</h3>
             <div id="achievements-list">
@@ -426,7 +444,7 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
               </p>
             </div>
           </div>
-          
+
           <div class="controls">
             <button class="btn primary" id="start-tracking">开始追踪</button>
             <button class="btn" id="stop-tracking">停止追踪</button>
@@ -434,16 +452,16 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
             <button class="btn" id="clear-data">清除数据</button>
           </div>
         </div>
-        
+
         <script>
           const vscode = acquireVsCodeApi();
-          
+
           function updateStats(stats) {
             document.getElementById('total-commits').textContent = stats.totalCommits || 0;
             document.getElementById('streak-days').textContent = stats.streakDays || 0;
             document.getElementById('lines-added').textContent = stats.totalLinesAdded || 0;
             document.getElementById('achievements-count').textContent = stats.achievements?.length || 0;
-            
+
             const achievementsList = document.getElementById('achievements-list');
             if (stats.achievements && stats.achievements.length > 0) {
               achievementsList.innerHTML = stats.achievements.map(achievement => \`
@@ -459,7 +477,7 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
               achievementsList.innerHTML = '<p style="text-align: center; color: var(--vscode-descriptionForeground);">暂无成就，开始提交代码来解锁吧！</p>';
             }
           }
-          
+
           function updateTrackingStatus(isTracking) {
             const statusEl = document.getElementById('status');
             if (isTracking) {
@@ -470,28 +488,28 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
               statusEl.className = 'status not-tracking';
             }
           }
-          
+
           document.getElementById('start-tracking').addEventListener('click', () => {
             vscode.postMessage({ type: 'startTracking' });
           });
-          
+
           document.getElementById('stop-tracking').addEventListener('click', () => {
             vscode.postMessage({ type: 'stopTracking' });
           });
-          
+
           document.getElementById('add-mock').addEventListener('click', () => {
             vscode.postMessage({ type: 'addMockCommit' });
           });
-          
+
           document.getElementById('clear-data').addEventListener('click', () => {
             if (confirm('确定要清除所有数据吗？此操作不可恢复。')) {
               vscode.postMessage({ type: 'clearData' });
             }
           });
-          
+
           window.addEventListener('message', event => {
             const message = event.data;
-            
+
             switch (message.type) {
               case 'updateData':
                 updateStats(message.data);
@@ -501,7 +519,7 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
                 break;
             }
           });
-          
+
           document.addEventListener('DOMContentLoaded', () => {
             vscode.postMessage({ type: 'getGitStats' });
           });
