@@ -182,6 +182,7 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
       console.log('Babel JS URI:', babelJsUri);
       console.log('Lucide JS URI:', lucideJsUri);
       console.log('Motion JS URI:', motionJsUri);
+      console.log('Motion 是否存在:', motionExists);
 
       // 创建完整的 HTML 内容，直接包含 Figma 源码
       const htmlContent = `<!DOCTYPE html>
@@ -213,14 +214,14 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
   <div id="root"></div>
 
   <!-- React 和 ReactDOM 本地资源 -->
-  <script src="${reactJsUri}"></script>
-  <script src="${reactDomJsUri}"></script>
+  <script src="${reactJsUri}" onload="console.log('React 加载成功')" onerror="console.error('React 加载失败')"></script>
+  <script src="${reactDomJsUri}" onload="console.log('ReactDOM 加载成功')" onerror="console.error('ReactDOM 加载失败')"></script>
 
   <!-- Babel 用于 JSX 转换 -->
-  <script src="${babelJsUri}"></script>
+  <script src="${babelJsUri}" onload="console.log('Babel 加载成功')" onerror="console.error('Babel 加载失败')"></script>
 
   <!-- Lucide React 图标库 -->
-  <script src="${lucideJsUri}"></script>
+  <script src="${lucideJsUri}" onload="console.log('Lucide 加载成功')" onerror="console.error('Lucide 加载失败')"></script>
 
   ${
     motionExists
@@ -231,8 +232,11 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
 
   <!-- VS Code API 脚本 -->
   <script>
+    console.log('开始初始化 VSCode API...');
+    
     // VS Code API
     const vscode = acquireVsCodeApi();
+    console.log('VSCode API 获取成功:', !!vscode);
 
     // 通信函数
     window.vscodeAPI = {
@@ -270,11 +274,46 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
 
   <!-- Figma 组件脚本 -->
   <script type="text/babel" data-type="module">
-    ${appTsxContent}
-
-    // 渲染应用
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(React.createElement(App));
+    console.log('开始加载 Figma 组件...');
+    console.log('React 可用:', typeof React !== 'undefined');
+    console.log('ReactDOM 可用:', typeof ReactDOM !== 'undefined');
+    console.log('Babel 可用:', typeof Babel !== 'undefined');
+    
+    try {
+      ${appTsxContent}
+      
+      console.log('App 组件定义完成');
+      console.log('App 组件类型:', typeof App);
+      
+      // 渲染应用
+      const rootElement = document.getElementById('root');
+      console.log('Root 元素:', rootElement);
+      
+      if (rootElement && typeof ReactDOM !== 'undefined' && typeof React !== 'undefined') {
+        const root = ReactDOM.createRoot(rootElement);
+        console.log('React Root 创建成功');
+        
+        if (typeof App !== 'undefined') {
+          root.render(React.createElement(App));
+          console.log('App 组件渲染完成');
+        } else {
+          console.error('App 组件未定义');
+          root.render(React.createElement('div', null, 'App 组件加载失败'));
+        }
+      } else {
+        console.error('渲染条件不满足:', {
+          rootElement: !!rootElement,
+          ReactDOM: typeof ReactDOM,
+          React: typeof React
+        });
+      }
+    } catch (error) {
+      console.error('渲染过程中发生错误:', error);
+      const rootElement = document.getElementById('root');
+      if (rootElement) {
+        rootElement.innerHTML = '<div style="color: red; padding: 20px;">渲染错误: ' + error.message + '</div>';
+      }
+    }
   </script>
 </body>
 </html>`;
