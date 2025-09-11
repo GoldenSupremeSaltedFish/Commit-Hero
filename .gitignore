@@ -19,7 +19,7 @@ dist/
 .env.production.local
 
 # IDE and editor files
-.vscode/
+# .vscode/  # 注释掉，保留VSCode配置
 .idea/
 *.swp
 *.swo
@@ -237,9 +237,9 @@ apps/web/data/commit-hero.db
 # pnpm-lock.yaml
 
 # IDE 配置文件（保留必要的调试配置）
-.vscode/settings.json
-.vscode/launch.json
-.vscode/extensions.json
+# .vscode/settings.json  # 注释掉，保留VSCode配置
+# .vscode/launch.json    # 注释掉，保留VSCode配置
+# .vscode/extensions.json # 注释掉，保留VSCode配置
 .idea/workspace.xml
 .idea/tasks.xml
 .idea/usage.statistics.xml
