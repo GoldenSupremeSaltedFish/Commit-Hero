@@ -1,0 +1,37 @@
+{
+  "folders": [
+    {
+      "name": "Commit Hero Extension",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "typescript.preferences.includePackageJsonAutoImports": "auto",
+    "typescript.suggest.autoImports": true,
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit",
+      "source.organizeImports": "explicit"
+    },
+    "files.associations": {
+      "*.tsx": "typescriptreact",
+      "*.ts": "typescript",
+      "*.js": "javascript",
+      "*.jsx": "javascriptreact",
+      "*.json": "json",
+      "*.md": "markdown",
+      "*.css": "css",
+      "*.html": "html",
+      "*.svg": "svg"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-vscode.vscode-typescript-next",
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint"
+    ]
+  }
+}
