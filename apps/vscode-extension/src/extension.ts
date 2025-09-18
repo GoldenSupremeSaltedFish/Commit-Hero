@@ -1,12 +1,17 @@
 import * as vscode from 'vscode';
 import { CommitHeroProvider } from './commitHeroProvider';
 import { GitTracker } from './gitTracker';
+import { StatusBarManager } from './statusBarManager';
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('Commit Hero 插件已激活');
 
   // 初始化 GitTracker
   const gitTracker = new GitTracker(context);
+
+  // 初始化状态栏管理器
+  const statusBarManager = new StatusBarManager();
+  statusBarManager.initialize();
 
   // 设置初始上下文
   vscode.commands.executeCommand('setContext', 'commitHero.isTracking', gitTracker.isTracking());
@@ -17,25 +22,46 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerWebviewViewProvider('commit-hero-stats', provider)
   );
 
+  // Connect notification manager with webview provider
+  gitTracker.setWebviewProvider(provider);
+
   // 注册命令
-  const startTrackingCommand = vscode.commands.registerCommand('commitHero.startTracking', () => {
-    gitTracker.startTracking();
-    vscode.commands.executeCommand('setContext', 'commitHero.isTracking', true);
-    provider.updateTrackingStatus(true);
-    provider.refreshData();
-    vscode.window.showInformationMessage('开始追踪 Git 提交');
-  });
+  const startTrackingCommand = vscode.commands.registerCommand(
+    'commitHero.startTracking',
+    async () => {
+      await gitTracker.startTracking();
+      vscode.commands.executeCommand('setContext', 'commitHero.isTracking', true);
+      provider.updateTrackingStatus(true);
+      provider.refreshData();
+
+      // Update status bar
+      const stats = gitTracker.getStats();
+      statusBarManager.updateStatus(true, {
+        totalCommits: stats.totalCommits,
+        streakDays: stats.streakDays,
+      });
+    }
+  );
 
   const stopTrackingCommand = vscode.commands.registerCommand('commitHero.stopTracking', () => {
     gitTracker.stopTracking();
     vscode.commands.executeCommand('setContext', 'commitHero.isTracking', false);
     provider.updateTrackingStatus(false);
+    statusBarManager.updateStatus(false);
     vscode.window.showInformationMessage('停止追踪 Git 提交');
   });
 
   const addMockCommitCommand = vscode.commands.registerCommand('commitHero.addMockCommit', () => {
     gitTracker.addMockCommit();
     provider.refreshData();
+
+    // Update status bar
+    const stats = gitTracker.getStats();
+    statusBarManager.updateStatus(gitTracker.isTracking(), {
+      totalCommits: stats.totalCommits,
+      streakDays: stats.streakDays,
+    });
+
     vscode.window.showInformationMessage('已添加模拟提交');
   });
 
@@ -63,7 +89,8 @@ export function activate(context: vscode.ExtensionContext) {
     stopTrackingCommand,
     addMockCommitCommand,
     showLocalStatsCommand,
-    showViewCommand
+    showViewCommand,
+    statusBarManager
   );
 
   // 延迟初始化数据，确保 webview 已准备好

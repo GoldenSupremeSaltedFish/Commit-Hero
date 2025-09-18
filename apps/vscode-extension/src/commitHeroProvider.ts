@@ -49,7 +49,7 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
           this.refreshData();
           break;
         case 'startTracking':
-          this.gitTracker.startTracking();
+          await this.gitTracker.startTracking();
           vscode.commands.executeCommand('setContext', 'commitHero.isTracking', true);
           this.updateTrackingStatus(true);
           this.refreshData();
@@ -103,6 +103,15 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
       this._view.webview.postMessage({
         type: 'updateTrackingStatus',
         isTracking,
+      });
+    }
+  }
+
+  public showAchievementNotification(achievement: any): void {
+    if (this._view && this.webviewReady) {
+      this._view.webview.postMessage({
+        type: 'achievementUnlocked',
+        achievement,
       });
     }
   }

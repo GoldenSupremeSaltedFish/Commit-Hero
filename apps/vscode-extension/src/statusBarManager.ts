@@ -9,30 +9,35 @@ export class StatusBarManager {
       return;
     }
 
-    this.statusBarItem = vscode.window.createStatusBarItem(
-      vscode.StatusBarAlignment.Right,
-      100
-    );
+    this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     this.statusBarItem.name = 'Commit Hero Status';
     this.statusBarItem.tooltip = 'Commit Hero 追踪状态';
     this.statusBarItem.command = 'commit-hero.startTracking';
-    
+
     this.updateStatus(false);
     this.statusBarItem.show();
-    
+
     this.isInitialized = true;
   }
 
-  public updateStatus(isTracking: boolean): void {
+  public updateStatus(
+    isTracking: boolean,
+    stats?: { totalCommits: number; streakDays: number }
+  ): void {
     if (!this.isInitialized) {
       return;
     }
 
     if (isTracking) {
-      this.statusBarItem.text = '$(trophy) Commit Hero';
-      this.statusBarItem.tooltip = 'Commit Hero 正在追踪中 - 点击停止';
+      const commitText = stats
+        ? ` (${stats.totalCommits} commits, ${stats.streakDays} day streak)`
+        : '';
+      this.statusBarItem.text = `$(trophy) Commit Hero${commitText}`;
+      this.statusBarItem.tooltip = `Commit Hero 正在追踪中${commitText} - 点击停止`;
       this.statusBarItem.command = 'commit-hero.stopTracking';
-      this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.prominentBackground');
+      this.statusBarItem.backgroundColor = new vscode.ThemeColor(
+        'statusBarItem.prominentBackground'
+      );
     } else {
       this.statusBarItem.text = '$(trophy) Commit Hero';
       this.statusBarItem.tooltip = 'Commit Hero 未追踪 - 点击开始';
@@ -48,7 +53,7 @@ export class StatusBarManager {
 
     const originalText = this.statusBarItem.text;
     this.statusBarItem.text = `$(trophy) ${message}`;
-    
+
     setTimeout(() => {
       if (this.isInitialized) {
         this.statusBarItem.text = originalText;

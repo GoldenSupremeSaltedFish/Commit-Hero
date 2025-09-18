@@ -28,20 +28,24 @@ interface GitStats {
   streakDays: number;
   totalLinesAdded: number;
   totalLinesDeleted: number;
+  totalFilesChanged: number;
+  lastCommitDate: string;
   achievements: Array<{
     id: string;
     name: string;
     description: string;
     icon: string;
     unlockedAt: string;
+    category: 'commit' | 'streak' | 'lines' | 'files';
   }>;
 }
 
 export default function App() {
-  const [showAchievement, setShowAchievement] = useState(true);
+  const [showAchievement, setShowAchievement] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [gitStats, setGitStats] = useState<GitStats | null>(null);
   const [isTracking, setIsTracking] = useState(false);
+  const [currentAchievement, setCurrentAchievement] = useState<any>(null);
 
   const addNotification = (notification: Omit<Notification, 'id'>) => {
     const newNotification = {
@@ -74,6 +78,17 @@ export default function App() {
           break;
         case 'gitStatsResponse':
           setGitStats(message.data);
+          break;
+        case 'achievementUnlocked':
+          // Show achievement notification
+          addNotification({
+            type: 'achievement',
+            title: `🎉 ${message.achievement.name}`,
+            message: message.achievement.description,
+          });
+          // Show achievement modal with real data
+          setCurrentAchievement(message.achievement);
+          setShowAchievement(true);
           break;
       }
     };
@@ -118,11 +133,16 @@ export default function App() {
                   xp,
                 })
               }
+              gitStats={gitStats}
+              isTracking={isTracking}
             />
           </div>
           {showAchievement && (
             <div className='w-[387px]'>
-              <AchievementModal onClose={() => setShowAchievement(false)} />
+              <AchievementModal
+                onClose={() => setShowAchievement(false)}
+                achievement={currentAchievement}
+              />
             </div>
           )}
         </div>
