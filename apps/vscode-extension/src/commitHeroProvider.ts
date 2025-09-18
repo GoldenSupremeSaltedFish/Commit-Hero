@@ -108,224 +108,58 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
-    // 使用本地 figma-frontend 路径
-    const figmaSourcePath = path.join(__dirname, '..', 'figma-frontend');
+    // 检查 webview-dist 目录是否存在
+    const webviewDistPath = path.join(__dirname, '..', 'webview-dist');
 
-    // 检查本地 figma-frontend 是否存在
-    if (!fs.existsSync(figmaSourcePath)) {
-      console.log('本地 figma-frontend 目录不存在，使用fallback HTML');
+    if (!fs.existsSync(webviewDistPath)) {
+      console.log('webview-dist 目录不存在，使用fallback HTML');
       return this._getFallbackHtml(webview);
     }
 
     try {
-      // 读取 Figma 源码文件 - 使用完整版本
-      const appTsxPath = path.join(figmaSourcePath, 'App.tsx');
-      const globalsCssPath = path.join(figmaSourcePath, 'globals.css');
+      // 读取构建后的 index.html
+      const indexPath = path.join(webviewDistPath, 'index.html');
 
-      // 使用完整版本
-      const finalAppTsxPath = appTsxPath;
-
-      if (!fs.existsSync(finalAppTsxPath) || !fs.existsSync(globalsCssPath)) {
-        console.log('本地 Figma 源码文件未找到，使用fallback HTML');
+      if (!fs.existsSync(indexPath)) {
+        console.log('webview-dist/index.html 不存在，使用fallback HTML');
         return this._getFallbackHtml(webview);
       }
 
-      // 读取 App.tsx 和 globals.css
-      const appTsxContent = fs.readFileSync(finalAppTsxPath, 'utf8');
-      const globalsCssContent = fs.readFileSync(globalsCssPath, 'utf8');
+      let htmlContent = fs.readFileSync(indexPath, 'utf8');
+      console.log('成功读取 webview-dist/index.html');
 
-      console.log('成功读取本地 Figma 源码文件');
-      console.log('App.tsx 长度:', appTsxContent.length);
-      console.log('globals.css 长度:', globalsCssContent.length);
+      // 替换资源路径为 webview URI
+      htmlContent = this._replaceResourcePaths(htmlContent, webview);
 
-      // 检查本地 React 资源是否存在
-      const reactAssetsPath = path.join(this._extensionUri.fsPath, 'react-assets');
-      const reactJsPath = path.join(reactAssetsPath, 'react.production.min.js');
-      const reactDomJsPath = path.join(reactAssetsPath, 'react-dom.production.min.js');
-      const babelJsPath = path.join(reactAssetsPath, 'babel.min.js');
-      const lucideJsPath = path.join(reactAssetsPath, 'lucide-react.js');
-      const motionJsPath = path.join(reactAssetsPath, 'motion.js');
-
-      if (
-        !fs.existsSync(reactJsPath) ||
-        !fs.existsSync(reactDomJsPath) ||
-        !fs.existsSync(babelJsPath) ||
-        !fs.existsSync(lucideJsPath)
-      ) {
-        console.log('本地 React 核心资源不存在，使用fallback HTML');
-        return this._getFallbackHtml(webview);
-      }
-
-      // motion.js 是可选的，如果不存在就跳过
-      const motionExists = fs.existsSync(motionJsPath) && fs.statSync(motionJsPath).size > 0;
-
-      // 生成本地资源的 webview URI
-      const reactJsUri = webview.asWebviewUri(
-        vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'react.production.min.js')
-      );
-      const reactDomJsUri = webview.asWebviewUri(
-        vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'react-dom.production.min.js')
-      );
-      const babelJsUri = webview.asWebviewUri(
-        vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'babel.min.js')
-      );
-      const lucideJsUri = webview.asWebviewUri(
-        vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'lucide-react.js')
-      );
-      const motionJsUri = webview.asWebviewUri(
-        vscode.Uri.joinPath(this._extensionUri, 'react-assets', 'motion.js')
-      );
-
-      console.log('使用本地 React 资源');
-      console.log('React JS URI:', reactJsUri);
-      console.log('ReactDOM JS URI:', reactDomJsUri);
-      console.log('Babel JS URI:', babelJsUri);
-      console.log('Lucide JS URI:', lucideJsUri);
-      console.log('Motion JS URI:', motionJsUri);
-      console.log('Motion 是否存在:', motionExists);
-
-      // 创建完整的 HTML 内容，直接包含 Figma 源码
-      const htmlContent = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Commit Hero - Figma 设计</title>
-  <style>
-    ${globalsCssContent}
-
-    /* VSCode 主题适配 */
-    body {
-      background: var(--vscode-editor-background);
-      color: var(--vscode-foreground);
-      font-family: var(--vscode-font-family);
-      margin: 0;
-      padding: 0;
-    }
-
-    /* 确保组件在 VSCode 中正确显示 */
-    #root {
-      min-height: 100vh;
-      background: var(--vscode-editor-background);
-    }
-  </style>
-</head>
-<body>
-  <div id="root"></div>
-
-  <!-- React 和 ReactDOM 本地资源 -->
-  <script src="${reactJsUri}" onload="console.log('React 加载成功')" onerror="console.error('React 加载失败')"></script>
-  <script src="${reactDomJsUri}" onload="console.log('ReactDOM 加载成功')" onerror="console.error('ReactDOM 加载失败')"></script>
-
-  <!-- Babel 用于 JSX 转换 -->
-  <script src="${babelJsUri}" onload="console.log('Babel 加载成功')" onerror="console.error('Babel 加载失败')"></script>
-
-  <!-- Lucide React 图标库 -->
-  <script src="${lucideJsUri}" onload="console.log('Lucide 加载成功')" onerror="console.error('Lucide 加载失败')"></script>
-
-  ${
-    motionExists
-      ? `<!-- Motion 动画库 -->
-  <script src="${motionJsUri}"></script>`
-      : '<!-- Motion 动画库不可用，跳过 -->'
-  }
-
-  <!-- VS Code API 脚本 -->
-  <script>
-    console.log('开始初始化 VSCode API...');
-    
-    // VS Code API
-    const vscode = acquireVsCodeApi();
-    console.log('VSCode API 获取成功:', !!vscode);
-
-    // 通信函数
-    window.vscodeAPI = {
-      postMessage: (message) => vscode.postMessage(message),
-      getState: () => vscode.getState(),
-      setState: (state) => vscode.setState(state)
-    };
-
-    // 监听来自VS Code的消息
-    window.addEventListener('message', (event) => {
-      const message = event.data;
-      if (window.handleVSCodeMessage) {
-        window.handleVSCodeMessage(message);
-      }
-    });
-
-    // 页面加载完成后发送ready消息
-    document.addEventListener('DOMContentLoaded', () => {
-      console.log('DOM loaded, sending ready message');
-      vscode.postMessage({ type: 'ready' });
-      vscode.postMessage({ type: 'getGitStats' });
-    });
-
-    // 如果DOM已经加载完成，立即发送ready消息
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => {
-        console.log('DOM loading, sending ready message');
-        vscode.postMessage({ type: 'ready' });
-      });
-    } else {
-      console.log('DOM already loaded, sending ready message immediately');
-      vscode.postMessage({ type: 'ready' });
-    }
-  </script>
-
-  <!-- Figma 组件脚本 -->
-  <script type="text/babel" data-type="module">
-    console.log('开始加载 Figma 组件...');
-    console.log('React 可用:', typeof React !== 'undefined');
-    console.log('ReactDOM 可用:', typeof ReactDOM !== 'undefined');
-    console.log('Babel 可用:', typeof Babel !== 'undefined');
-    
-    try {
-      ${appTsxContent}
-      
-      console.log('App 组件定义完成');
-      console.log('App 组件类型:', typeof App);
-      
-      // 渲染应用
-      const rootElement = document.getElementById('root');
-      console.log('Root 元素:', rootElement);
-      
-      if (rootElement && typeof ReactDOM !== 'undefined' && typeof React !== 'undefined') {
-        const root = ReactDOM.createRoot(rootElement);
-        console.log('React Root 创建成功');
-        
-        if (typeof App !== 'undefined') {
-          root.render(React.createElement(App));
-          console.log('App 组件渲染完成');
-        } else {
-          console.error('App 组件未定义');
-          root.render(React.createElement('div', null, 'App 组件加载失败'));
-        }
-      } else {
-        console.error('渲染条件不满足:', {
-          rootElement: !!rootElement,
-          ReactDOM: typeof ReactDOM,
-          React: typeof React
-        });
-      }
-    } catch (error) {
-      console.error('渲染过程中发生错误:', error);
-      const rootElement = document.getElementById('root');
-      if (rootElement) {
-        rootElement.innerHTML = '<div style="color: red; padding: 20px;">渲染错误: ' + error.message + '</div>';
-      }
-    }
-  </script>
-</body>
-</html>`;
-
-      console.log('生成的 HTML 内容长度:', htmlContent.length);
-      console.log('HTML 内容前200字符:', htmlContent.substring(0, 200));
-
+      console.log('HTML 内容处理完成，长度:', htmlContent.length);
       return htmlContent;
     } catch (error) {
-      console.error('加载构建产物失败:', error);
+      console.error('加载 webview 构建产物失败:', error);
       return this._getFallbackHtml(webview);
     }
+  }
+
+  private _replaceResourcePaths(htmlContent: string, webview: vscode.Webview): string {
+    // 替换相对路径为 webview URI
+    const assetRegex = /(src|href)="([^"]*\.(js|css|png|jpg|jpeg|gif|svg|ico))"/g;
+
+    return htmlContent.replace(assetRegex, (match, attr, assetPath) => {
+      // 跳过已经是完整 URL 的路径
+      if (assetPath.startsWith('http') || assetPath.startsWith('data:')) {
+        return match;
+      }
+
+      // 移除开头的 ./
+      const cleanPath = assetPath.replace(/^\.\//, '');
+
+      // 创建 webview URI
+      const assetUri = webview.asWebviewUri(
+        vscode.Uri.joinPath(this._extensionUri, 'webview-dist', cleanPath)
+      );
+
+      console.log(`替换资源路径: ${assetPath} -> ${assetUri}`);
+      return `${attr}="${assetUri}"`;
+    });
   }
 
   private _getFallbackHtml(webview: vscode.Webview) {
