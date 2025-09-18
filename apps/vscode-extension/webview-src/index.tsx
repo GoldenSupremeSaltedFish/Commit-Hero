@@ -36,21 +36,18 @@ window.addEventListener('message', event => {
 });
 
 // 页面加载完成后发送 ready 消息
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM loaded, sending ready message');
+function sendReadyMessage() {
+  console.log('Sending ready message');
   vscode.postMessage({ type: 'ready' });
   vscode.postMessage({ type: 'getGitStats' });
-});
+}
 
-// 如果 DOM 已经加载完成，立即发送 ready 消息
+// 确保只发送一次 ready 消息
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loading, sending ready message');
-    vscode.postMessage({ type: 'ready' });
-  });
+  document.addEventListener('DOMContentLoaded', sendReadyMessage);
 } else {
-  console.log('DOM already loaded, sending ready message immediately');
-  vscode.postMessage({ type: 'ready' });
+  // DOM 已经加载完成，立即发送
+  sendReadyMessage();
 }
 
 // 渲染应用

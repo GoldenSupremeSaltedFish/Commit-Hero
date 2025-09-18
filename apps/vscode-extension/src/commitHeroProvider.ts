@@ -10,6 +10,7 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
   private readonly _extensionUri: vscode.Uri;
   private gitTracker: GitTracker;
   private webviewReady = false;
+  private messageListener?: vscode.Disposable;
 
   constructor(extensionUri: vscode.Uri, gitTracker: GitTracker) {
     this._extensionUri = extensionUri;
@@ -40,7 +41,13 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
     webviewView.webview.html = htmlContent;
     console.log('webview HTML 内容已设置');
 
-    webviewView.webview.onDidReceiveMessage(async data => {
+    // 清理之前的监听器
+    if (this.messageListener) {
+      this.messageListener.dispose();
+    }
+
+    // 设置新的消息监听器
+    this.messageListener = webviewView.webview.onDidReceiveMessage(async data => {
       console.log('收到 webview 消息:', data);
       switch (data.type) {
         case 'ready':
@@ -116,6 +123,13 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  public dispose(): void {
+    if (this.messageListener) {
+      this.messageListener.dispose();
+      this.messageListener = undefined;
+    }
+  }
+
   private _getHtmlForWebview(webview: vscode.Webview) {
     // 检查 webview-dist 目录是否存在
     const webviewDistPath = path.join(__dirname, '..', 'webview-dist');
@@ -154,7 +168,7 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
 
     return htmlContent.replace(assetRegex, (match, attr, assetPath) => {
       // 跳过已经是完整 URL 的路径
-      if (assetPath.startsWith('http') || assetPath.startsWith('data:')) {
+      if (assetPath.startsWith('http') || assetPath.startsWith('data:') || assetPath.startsWith('vscode-webview-resource:')) {
         return match;
       }
 
