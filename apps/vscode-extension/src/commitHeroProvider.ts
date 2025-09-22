@@ -41,13 +41,10 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
     webviewView.webview.html = htmlContent;
     console.log('webview HTML 内容已设置');
 
-    // 清理之前的监听器
-    if (this.messageListener) {
-      this.messageListener.dispose();
-    }
-
-    // 设置新的消息监听器
-    this.messageListener = webviewView.webview.onDidReceiveMessage(async data => {
+    // 只在第一次调用时设置消息监听器
+    if (!this.messageListener) {
+      // 设置消息监听器
+      this.messageListener = webviewView.webview.onDidReceiveMessage(async data => {
       console.log('收到 webview 消息:', data);
       switch (data.type) {
         case 'ready':
@@ -82,9 +79,9 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
           });
           break;
       }
-    });
-
-    console.log('webview 消息监听器已设置');
+      });
+      console.log('webview 消息监听器已设置');
+    }
   }
 
   public async refreshData(): Promise<void> {
@@ -131,25 +128,25 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
-    // 检查 webview-dist 目录是否存在
-    const webviewDistPath = path.join(__dirname, '..', 'webview-dist');
+    // 检查 webview-assets 目录是否存在
+    const webviewAssetsPath = path.join(__dirname, '..', 'webview-assets');
 
-    if (!fs.existsSync(webviewDistPath)) {
-      console.log('webview-dist 目录不存在，使用fallback HTML');
+    if (!fs.existsSync(webviewAssetsPath)) {
+      console.log('webview-assets 目录不存在，使用fallback HTML');
       return this._getFallbackHtml(webview);
     }
 
     try {
       // 读取构建后的 index.html
-      const indexPath = path.join(webviewDistPath, 'index.html');
+      const indexPath = path.join(webviewAssetsPath, 'index.html');
 
       if (!fs.existsSync(indexPath)) {
-        console.log('webview-dist/index.html 不存在，使用fallback HTML');
+        console.log('webview-assets/index.html 不存在，使用fallback HTML');
         return this._getFallbackHtml(webview);
       }
 
       let htmlContent = fs.readFileSync(indexPath, 'utf8');
-      console.log('成功读取 webview-dist/index.html');
+      console.log('成功读取 webview-assets/index.html');
 
       // 替换资源路径为 webview URI
       htmlContent = this._replaceResourcePaths(htmlContent, webview);
@@ -172,12 +169,17 @@ export class CommitHeroProvider implements vscode.WebviewViewProvider {
         return match;
       }
 
-      // 移除开头的 ./
-      const cleanPath = assetPath.replace(/^\.\//, '');
+      // 处理以 / 开头的路径（如 /assets/...）
+      let cleanPath = assetPath;
+      if (assetPath.startsWith('/')) {
+        cleanPath = assetPath.substring(1); // 移除开头的 /
+      } else if (assetPath.startsWith('./')) {
+        cleanPath = assetPath.substring(2); // 移除开头的 ./
+      }
 
       // 创建 webview URI
       const assetUri = webview.asWebviewUri(
-        vscode.Uri.joinPath(this._extensionUri, 'webview-dist', cleanPath)
+        vscode.Uri.joinPath(this._extensionUri, 'webview-assets', cleanPath)
       );
 
       console.log(`替换资源路径: ${assetPath} -> ${assetUri}`);
