@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiffSense 分析报告</title>
+    <script src="https://unpkg.com/cytoscape@3.23.0/dist/cytoscape.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #4a5568;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header .subtitle {
+            color: #718096;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .info-card {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info-card .label {
+            font-size: 0.9em;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+        
+        .info-card .value {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .stats-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .stats-title {
+            font-size: 1.5em;
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .test-coverage-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .test-gap-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            overflow: hidden;
+            transition: transform 0.2s ease;
+        }
+        
+        .test-gap-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .test-gap-header {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .risk-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .risk-high {
+            background: #e53e3e;
+        }
+        
+        .risk-medium {
+            background: #dd6b20;
+        }
+        
+        .risk-low {
+            background: #38a169;
+        }
+        
+        .classification-info {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .category-tag {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            color: white;
+        }
+        
+        /* 后端分类样式 (A1-A5) */
+        .category-A1 {
+            background: #e53e3e;
+        }
+        
+        .category-A2 {
+            background: #dd6b20;
+        }
+        
+        .category-A3 {
+            background: #3182ce;
+        }
+        
+        .category-A4 {
+            background: #805ad5;
+        }
+        
+        .category-A5 {
+            background: #38a169;
+        }
+        
+        /* 前端分类样式 (F1-F5) */
+        .category-F1 {
+            background: #e91e63;
+        }
+        
+        .category-F2 {
+            background: #2196f3;
+        }
+        
+        .category-F3 {
+            background: #ff5722;
+        }
+        
+        .category-F4 {
+            background: #795548;
+        }
+        
+        .category-F5 {
+            background: #607d8b;
+        }
+        
+        .confidence-score {
+            font-size: 0.9em;
+            color: #718096;
+            font-weight: 600;
+        }
+        
+        .test-gap-content {
+            padding: 15px;
+            background: #f9f9f9;
+        }
+        
+        .method-signature {
+            font-family: 'Courier New', monospace;
+            background: #f1f5f9;
+            padding: 8px;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+        
+        .commits-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .commit-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            transition: transform 0.2s ease;
+        }
+        
+        .commit-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .commit-header {
+            background: #f7fafc;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .commit-id {
+            font-family: 'Courier New', monospace;
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin-right: 10px;
+        }
+        
+        .commit-message {
+            font-weight: 600;
+            color: #2d3748;
+            margin: 8px 0;
+        }
+        
+        .commit-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #718096;
+            font-size: 0.9em;
+        }
+        
+        .risk-score {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .risk-high { background: #e53e3e; }
+        .risk-medium { background: #dd6b20; }
+        .risk-low { background: #38a169; }
+        
+        .commit-content {
+            padding: 20px;
+        }
+        
+        .section {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #667eea;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+        
+        .file-list, .method-list {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .file-item, .method-item {
+            margin-bottom: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #2d3748;
+        }
+        
+        .file-item:last-child, .method-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .call-graph-container {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            position: relative;
+        }
+        
+        .no-data {
+            text-align: center;
+            color: #718096;
+            font-style: italic;
+            padding: 20px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: white;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        
+        .toggle-details {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 0.9em;
+            text-decoration: underline;
+            margin-left: 10px;
+        }
+        
+        .details-content {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>DiffSense 分析报告</h1>
+            <div class="subtitle">Git 代码影响分析</div>
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="label">生成时间</div>
+                    <div class="value">2025-11-30T15:32:23.735Z</div>
+                </div>
+                <div class="info-card">
+                    <div class="label">仓库路径</div>
+                    <div class="value">Unknown</div>
+                </div>
+                <div class="info-card">
+                    <div class="label">分析引擎</div>
+                    <div class="value">DiffSense v1.0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Overview -->
+        <div class="stats-section">
+            <div class="stats-title">📊 分析概览</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">1</div>
+                    <div class="stat-label">总提交数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">3</div>
+                    <div class="stat-label">总文件数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">32</div>
+                    <div class="stat-label">总方法数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">5</div>
+                    <div class="stat-label">分类文件总数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0%</div>
+                    <div class="stat-label">平均置信度</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Commit Details -->
+        <div class="commits-section">
+            <div class="stats-title">📝 提交分析详情</div>
+            
+                <div class="commit-card">
+                    <div class="commit-header">
+                        <div>
+                            <span class="commit-id">static-a</span>
+                            <div class="commit-message">前端静态代码分析结果 (扫描5个文件) (显示3/5个重要文件)</div>
+                        </div>
+                        <div class="commit-meta">
+                            <div>
+                                <strong>作者:</strong> 前端分析器 | 
+                                <strong>日期:</strong> 2025/11/30 23:32:13
+                            </div>
+                            <div class="classification-info">
+                                <span class="category-tag category-F1">组件行为变更</span>
+                                <span class="confidence-score">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="commit-content">
+                        
+                            <div class="section">
+                                <div class="section-title">📁 影响文件</div>
+                                <div class="file-list">
+                                    
+                                        <div class="file-item">src/database.ts</div>
+                                    
+                                        <div class="file-item">src/core.ts</div>
+                                    
+                                        <div class="file-item">src/achievements.ts</div>
+                                    
+                                </div>
+                            </div>
+                        
+                        
+                        
+                            <div class="section">
+                                <div class="section-title">⚙️ 影响方法</div>
+                                <div class="method-list">
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.getDefaultDataDir</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.getDatabasePath</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.getDataDir</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.exportData</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.importData</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.backup</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.getDatabaseStats</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.initializeDatabase</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.getUser</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.createUser</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.getOrCreateUser</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.addCommit</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.getCommits</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.getAllBadges</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.getUserBadges</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.unlockBadge</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.getUserStats</div>
+                                    
+                                        <div class="method-item">src/database.ts:CommitHeroDatabase.close</div>
+                                    
+                                        <div class="method-item">src/core.ts:CommitHeroCore.addCommit</div>
+                                    
+                                        <div class="method-item">src/core.ts:CommitHeroCore.getUserStats</div>
+                                    
+                                        <div class="method-item">src/core.ts:CommitHeroCore.getUserBadges</div>
+                                    
+                                        <div class="method-item">src/core.ts:CommitHeroCore.getAllBadges</div>
+                                    
+                                        <div class="method-item">src/core.ts:CommitHeroCore.checkForNewAchievements</div>
+                                    
+                                        <div class="method-item">src/core.ts:CommitHeroCore.close</div>
+                                    
+                                        <div class="method-item">src/achievements.ts:AchievementEngine.checkAchievements</div>
+                                    
+                                        <div class="method-item">src/achievements.ts:AchievementEngine.evaluateBadge</div>
+                                    
+                                        <div class="method-item">src/achievements.ts:AchievementEngine.calculateStats</div>
+                                    
+                                        <div class="method-item">src/achievements.ts:AchievementEngine.evaluateCriteria</div>
+                                    
+                                        <div class="method-item">src/achievements.ts:AchievementEngine.evaluateSingleCondition</div>
+                                    
+                                        <div class="method-item">src/achievements.ts:AchievementEngine.calculateProgress</div>
+                                    
+                                        <div class="method-item">src/achievements.ts:AchievementEngine.getMaxProgress</div>
+                                    
+                                        <div class="method-item">src/achievements.ts:AchievementEngine.getNewlyUnlocked</div>
+                                    
+                                </div>
+                            </div>
+                        
+                        
+                        <div class="section">
+                            <div class="section-title">
+                                🔗 调用关系图
+                                <button class="toggle-details" onclick="toggleCallGraph('graph-0')">
+                                    显示/隐藏图表
+                                </button>
+                            </div>
+                            <div id="graph-0" class="details-content hidden">
+                                
+                                    <div style="margin-bottom: 10px; color: #718096; font-size: 0.9em;">
+                                        107 节点, 139 关系
+                                    </div>
+                                    <div class="call-graph-container" id="cy-0"></div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+        </div>
+
+        <!-- Test Coverage Section -->
+        
+
+        <div class="footer">
+            📋 报告由 DiffSense VSCode 扩展生成
+        </div>
+    </div>
+
+    <script>
+        // 切换详细信息显示
+        function toggleCallGraph(graphId) {
+            const element = document.getElementById(graphId);
+            if (element.classList.contains('hidden')) {
+                element.classList.remove('hidden');
+                // 如果是调用图，初始化Cytoscape
+                if (graphId.startsWith('graph-')) {
+                    const index = graphId.split('-')[1];
+                    setTimeout(() => initCallGraph(index), 100);
+                }
+            } else {
+                element.classList.add('hidden');
+            }
+        }
+
+        // 初始化调用关系图
+        function initCallGraph(index) {
+            const container = document.getElementById('cy-' + index);
+            if (!container || container.hasAttribute('data-initialized')) return;
+            
+            const callGraphData = [{"nodes":[{"data":{"id":"src/database.ts:CommitHeroDatabase.getDefaultDataDir","label":"CommitHeroDatabase.getDefaultDataDir","signature":"CommitHeroDatabase.getDefaultDataDir()","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:getDefaultDataDir","label":"getDefaultDataDir","signature":"getDefaultDataDir()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:cwd","label":"cwd","signature":"cwd()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:join","label":"join","signature":"join()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getDatabasePath","label":"CommitHeroDatabase.getDatabasePath","signature":"CommitHeroDatabase.getDatabasePath()","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:getDatabasePath","label":"getDatabasePath","signature":"getDatabasePath()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getDataDir","label":"CommitHeroDatabase.getDataDir","signature":"CommitHeroDatabase.getDataDir()","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:getDataDir","label":"getDataDir","signature":"getDataDir()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.exportData","label":"CommitHeroDatabase.exportData","signature":"CommitHeroDatabase.exportData()","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:exportData","label":"exportData","signature":"exportData()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:prepare","label":"prepare","signature":"prepare()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:all","label":"all","signature":"all()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:Date","label":"Date","signature":"Date()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:toISOString","label":"toISOString","signature":"toISOString()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.importData","label":"CommitHeroDatabase.importData","signature":"CommitHeroDatabase.importData(data)","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:importData","label":"importData","signature":"importData()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:exec","label":"exec","signature":"exec()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:users","label":"users","signature":"users()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:VALUES","label":"VALUES","signature":"VALUES()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:forEach","label":"forEach","signature":"forEach()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:run","label":"run","signature":"run()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:badges","label":"badges","signature":"badges()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:commits","label":"commits","signature":"commits()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:user_badges","label":"user_badges","signature":"user_badges()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:catch","label":"catch","signature":"catch()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:error","label":"error","signature":"error()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.backup","label":"CommitHeroDatabase.backup","signature":"CommitHeroDatabase.backup(backupPath)","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:backup","label":"backup","signature":"backup()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:Database","label":"Database","signature":"Database()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:close","label":"close","signature":"close()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getDatabaseStats","label":"CommitHeroDatabase.getDatabaseStats","signature":"CommitHeroDatabase.getDatabaseStats()","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:getDatabaseStats","label":"getDatabaseStats","signature":"getDatabaseStats()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:COUNT","label":"COUNT","signature":"COUNT()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:get","label":"get","signature":"get()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:statSync","label":"statSync","signature":"statSync()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:toFixed","label":"toFixed","signature":"toFixed()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.initializeDatabase","label":"CommitHeroDatabase.initializeDatabase","signature":"CommitHeroDatabase.initializeDatabase()","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:initializeDatabase","label":"initializeDatabase","signature":"initializeDatabase()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:KEY","label":"KEY","signature":"KEY()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:UNIQUE","label":"UNIQUE","signature":"UNIQUE()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:log","label":"log","signature":"log()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUser","label":"CommitHeroDatabase.getUser","signature":"CommitHeroDatabase.getUser(email)","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:getUser","label":"getUser","signature":"getUser()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.createUser","label":"CommitHeroDatabase.createUser","signature":"CommitHeroDatabase.createUser(email)","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:createUser","label":"createUser","signature":"createUser()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getOrCreateUser","label":"CommitHeroDatabase.getOrCreateUser","signature":"CommitHeroDatabase.getOrCreateUser(email)","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:getOrCreateUser","label":"getOrCreateUser","signature":"getOrCreateUser()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.addCommit","label":"CommitHeroDatabase.addCommit","signature":"CommitHeroDatabase.addCommit(data)","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:addCommit","label":"addCommit","signature":"addCommit()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getCommits","label":"CommitHeroDatabase.getCommits","signature":"CommitHeroDatabase.getCommits(email)","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:getCommits","label":"getCommits","signature":"getCommits()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getAllBadges","label":"CommitHeroDatabase.getAllBadges","signature":"CommitHeroDatabase.getAllBadges()","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:getAllBadges","label":"getAllBadges","signature":"getAllBadges()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUserBadges","label":"CommitHeroDatabase.getUserBadges","signature":"CommitHeroDatabase.getUserBadges(email)","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:getUserBadges","label":"getUserBadges","signature":"getUserBadges()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.unlockBadge","label":"CommitHeroDatabase.unlockBadge","signature":"CommitHeroDatabase.unlockBadge(email, badgeId)","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:unlockBadge","label":"unlockBadge","signature":"unlockBadge()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUserStats","label":"CommitHeroDatabase.getUserStats","signature":"CommitHeroDatabase.getUserStats(email)","file":"src/database.ts","type":"method"}},{"data":{"id":"src/database.ts:getUserStats","label":"getUserStats","signature":"getUserStats()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:reduce","label":"reduce","signature":"reduce()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:Set","label":"Set","signature":"Set()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:map","label":"map","signature":"map()","file":"src/database.ts","type":"unknown"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.close","label":"CommitHeroDatabase.close","signature":"CommitHeroDatabase.close()","file":"src/database.ts","type":"method"}},{"data":{"id":"src/core.ts:CommitHeroCore.addCommit","label":"CommitHeroCore.addCommit","signature":"CommitHeroCore.addCommit(data)","file":"src/core.ts","type":"method"}},{"data":{"id":"src/core.ts:addCommit","label":"addCommit","signature":"addCommit()","file":"src/core.ts","type":"unknown"}},{"data":{"id":"src/core.ts:checkForNewAchievements","label":"checkForNewAchievements","signature":"checkForNewAchievements()","file":"src/core.ts","type":"unknown"}},{"data":{"id":"src/core.ts:CommitHeroCore.getUserStats","label":"CommitHeroCore.getUserStats","signature":"CommitHeroCore.getUserStats(email)","file":"src/core.ts","type":"method"}},{"data":{"id":"src/core.ts:getUserStats","label":"getUserStats","signature":"getUserStats()","file":"src/core.ts","type":"unknown"}},{"data":{"id":"src/core.ts:CommitHeroCore.getUserBadges","label":"CommitHeroCore.getUserBadges","signature":"CommitHeroCore.getUserBadges(email)","file":"src/core.ts","type":"method"}},{"data":{"id":"src/core.ts:getUserBadges","label":"getUserBadges","signature":"getUserBadges()","file":"src/core.ts","type":"unknown"}},{"data":{"id":"src/core.ts:CommitHeroCore.getAllBadges","label":"CommitHeroCore.getAllBadges","signature":"CommitHeroCore.getAllBadges()","file":"src/core.ts","type":"method"}},{"data":{"id":"src/core.ts:getAllBadges","label":"getAllBadges","signature":"getAllBadges()","file":"src/core.ts","type":"unknown"}},{"data":{"id":"src/core.ts:CommitHeroCore.checkForNewAchievements","label":"CommitHeroCore.checkForNewAchievements","signature":"CommitHeroCore.checkForNewAchievements(email)","file":"src/core.ts","type":"method"}},{"data":{"id":"src/core.ts:getCommits","label":"getCommits","signature":"getCommits()","file":"src/core.ts","type":"unknown"}},{"data":{"id":"src/core.ts:checkAchievements","label":"checkAchievements","signature":"checkAchievements()","file":"src/core.ts","type":"unknown"}},{"data":{"id":"src/core.ts:some","label":"some","signature":"some()","file":"src/core.ts","type":"unknown"}},{"data":{"id":"src/core.ts:unlockBadge","label":"unlockBadge","signature":"unlockBadge()","file":"src/core.ts","type":"unknown"}},{"data":{"id":"src/core.ts:push","label":"push","signature":"push()","file":"src/core.ts","type":"unknown"}},{"data":{"id":"src/core.ts:CommitHeroCore.close","label":"CommitHeroCore.close","signature":"CommitHeroCore.close()","file":"src/core.ts","type":"method"}},{"data":{"id":"src/core.ts:close","label":"close","signature":"close()","file":"src/core.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:AchievementEngine.checkAchievements","label":"AchievementEngine.checkAchievements","signature":"AchievementEngine.checkAchievements(commits, badges, userBadges)","file":"src/achievements.ts","type":"method"}},{"data":{"id":"src/achievements.ts:checkAchievements","label":"checkAchievements","signature":"checkAchievements()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:Set","label":"Set","signature":"Set()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:map","label":"map","signature":"map()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:has","label":"has","signature":"has()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:evaluateBadge","label":"evaluateBadge","signature":"evaluateBadge()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:push","label":"push","signature":"push()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateBadge","label":"AchievementEngine.evaluateBadge","signature":"AchievementEngine.evaluateBadge(badge, commits, isUnlocked)","file":"src/achievements.ts","type":"method"}},{"data":{"id":"src/achievements.ts:calculateStats","label":"calculateStats","signature":"calculateStats()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:evaluateCriteria","label":"evaluateCriteria","signature":"evaluateCriteria()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:calculateProgress","label":"calculateProgress","signature":"calculateProgress()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:getMaxProgress","label":"getMaxProgress","signature":"getMaxProgress()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:AchievementEngine.calculateStats","label":"AchievementEngine.calculateStats","signature":"AchievementEngine.calculateStats(commits)","file":"src/achievements.ts","type":"method"}},{"data":{"id":"src/achievements.ts:reduce","label":"reduce","signature":"reduce()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateCriteria","label":"AchievementEngine.evaluateCriteria","signature":"AchievementEngine.evaluateCriteria(criteria, stats)","file":"src/achievements.ts","type":"method"}},{"data":{"id":"src/achievements.ts:split","label":"split","signature":"split()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:evaluateSingleCondition","label":"evaluateSingleCondition","signature":"evaluateSingleCondition()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:trim","label":"trim","signature":"trim()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateSingleCondition","label":"AchievementEngine.evaluateSingleCondition","signature":"AchievementEngine.evaluateSingleCondition(condition, stats)","file":"src/achievements.ts","type":"method"}},{"data":{"id":"src/achievements.ts:match","label":"match","signature":"match()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:parseInt","label":"parseInt","signature":"parseInt()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:switch","label":"switch","signature":"switch()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:AchievementEngine.calculateProgress","label":"AchievementEngine.calculateProgress","signature":"AchievementEngine.calculateProgress(criteria, stats)","file":"src/achievements.ts","type":"method"}},{"data":{"id":"src/achievements.ts:min","label":"min","signature":"min()","file":"src/achievements.ts","type":"unknown"}},{"data":{"id":"src/achievements.ts:AchievementEngine.getMaxProgress","label":"AchievementEngine.getMaxProgress","signature":"AchievementEngine.getMaxProgress(criteria)","file":"src/achievements.ts","type":"method"}},{"data":{"id":"src/achievements.ts:AchievementEngine.getNewlyUnlocked","label":"AchievementEngine.getNewlyUnlocked","signature":"AchievementEngine.getNewlyUnlocked(previousChecks, currentChecks)","file":"src/achievements.ts","type":"method"}},{"data":{"id":"src/achievements.ts:getNewlyUnlocked","label":"getNewlyUnlocked","signature":"getNewlyUnlocked()","file":"src/achievements.ts","type":"unknown"}}],"edges":[{"data":{"id":"src/database.ts:CommitHeroDatabase.getDefaultDataDir->src/database.ts:getDefaultDataDir","source":"src/database.ts:CommitHeroDatabase.getDefaultDataDir","target":"src/database.ts:getDefaultDataDir","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getDefaultDataDir->src/database.ts:cwd","source":"src/database.ts:CommitHeroDatabase.getDefaultDataDir","target":"src/database.ts:cwd","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getDefaultDataDir->src/database.ts:join","source":"src/database.ts:CommitHeroDatabase.getDefaultDataDir","target":"src/database.ts:join","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getDatabasePath->src/database.ts:getDatabasePath","source":"src/database.ts:CommitHeroDatabase.getDatabasePath","target":"src/database.ts:getDatabasePath","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getDataDir->src/database.ts:getDataDir","source":"src/database.ts:CommitHeroDatabase.getDataDir","target":"src/database.ts:getDataDir","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.exportData->src/database.ts:exportData","source":"src/database.ts:CommitHeroDatabase.exportData","target":"src/database.ts:exportData","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.exportData->src/database.ts:prepare","source":"src/database.ts:CommitHeroDatabase.exportData","target":"src/database.ts:prepare","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.exportData->src/database.ts:all","source":"src/database.ts:CommitHeroDatabase.exportData","target":"src/database.ts:all","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.exportData->src/database.ts:Date","source":"src/database.ts:CommitHeroDatabase.exportData","target":"src/database.ts:Date","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.exportData->src/database.ts:toISOString","source":"src/database.ts:CommitHeroDatabase.exportData","target":"src/database.ts:toISOString","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.importData->src/database.ts:importData","source":"src/database.ts:CommitHeroDatabase.importData","target":"src/database.ts:importData","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.importData->src/database.ts:exec","source":"src/database.ts:CommitHeroDatabase.importData","target":"src/database.ts:exec","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.importData->src/database.ts:prepare","source":"src/database.ts:CommitHeroDatabase.importData","target":"src/database.ts:prepare","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.importData->src/database.ts:users","source":"src/database.ts:CommitHeroDatabase.importData","target":"src/database.ts:users","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.importData->src/database.ts:VALUES","source":"src/database.ts:CommitHeroDatabase.importData","target":"src/database.ts:VALUES","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.importData->src/database.ts:forEach","source":"src/database.ts:CommitHeroDatabase.importData","target":"src/database.ts:forEach","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.importData->src/database.ts:run","source":"src/database.ts:CommitHeroDatabase.importData","target":"src/database.ts:run","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.importData->src/database.ts:badges","source":"src/database.ts:CommitHeroDatabase.importData","target":"src/database.ts:badges","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.importData->src/database.ts:commits","source":"src/database.ts:CommitHeroDatabase.importData","target":"src/database.ts:commits","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.importData->src/database.ts:user_badges","source":"src/database.ts:CommitHeroDatabase.importData","target":"src/database.ts:user_badges","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.importData->src/database.ts:catch","source":"src/database.ts:CommitHeroDatabase.importData","target":"src/database.ts:catch","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.importData->src/database.ts:error","source":"src/database.ts:CommitHeroDatabase.importData","target":"src/database.ts:error","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.backup->src/database.ts:backup","source":"src/database.ts:CommitHeroDatabase.backup","target":"src/database.ts:backup","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.backup->src/database.ts:Database","source":"src/database.ts:CommitHeroDatabase.backup","target":"src/database.ts:Database","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.backup->src/database.ts:close","source":"src/database.ts:CommitHeroDatabase.backup","target":"src/database.ts:close","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.backup->src/database.ts:catch","source":"src/database.ts:CommitHeroDatabase.backup","target":"src/database.ts:catch","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.backup->src/database.ts:error","source":"src/database.ts:CommitHeroDatabase.backup","target":"src/database.ts:error","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getDatabaseStats->src/database.ts:getDatabaseStats","source":"src/database.ts:CommitHeroDatabase.getDatabaseStats","target":"src/database.ts:getDatabaseStats","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getDatabaseStats->src/database.ts:prepare","source":"src/database.ts:CommitHeroDatabase.getDatabaseStats","target":"src/database.ts:prepare","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getDatabaseStats->src/database.ts:COUNT","source":"src/database.ts:CommitHeroDatabase.getDatabaseStats","target":"src/database.ts:COUNT","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getDatabaseStats->src/database.ts:get","source":"src/database.ts:CommitHeroDatabase.getDatabaseStats","target":"src/database.ts:get","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getDatabaseStats->src/database.ts:statSync","source":"src/database.ts:CommitHeroDatabase.getDatabaseStats","target":"src/database.ts:statSync","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getDatabaseStats->src/database.ts:toFixed","source":"src/database.ts:CommitHeroDatabase.getDatabaseStats","target":"src/database.ts:toFixed","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.initializeDatabase->src/database.ts:initializeDatabase","source":"src/database.ts:CommitHeroDatabase.initializeDatabase","target":"src/database.ts:initializeDatabase","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.initializeDatabase->src/database.ts:exec","source":"src/database.ts:CommitHeroDatabase.initializeDatabase","target":"src/database.ts:exec","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.initializeDatabase->src/database.ts:users","source":"src/database.ts:CommitHeroDatabase.initializeDatabase","target":"src/database.ts:users","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.initializeDatabase->src/database.ts:commits","source":"src/database.ts:CommitHeroDatabase.initializeDatabase","target":"src/database.ts:commits","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.initializeDatabase->src/database.ts:KEY","source":"src/database.ts:CommitHeroDatabase.initializeDatabase","target":"src/database.ts:KEY","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.initializeDatabase->src/database.ts:badges","source":"src/database.ts:CommitHeroDatabase.initializeDatabase","target":"src/database.ts:badges","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.initializeDatabase->src/database.ts:user_badges","source":"src/database.ts:CommitHeroDatabase.initializeDatabase","target":"src/database.ts:user_badges","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.initializeDatabase->src/database.ts:UNIQUE","source":"src/database.ts:CommitHeroDatabase.initializeDatabase","target":"src/database.ts:UNIQUE","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.initializeDatabase->src/database.ts:prepare","source":"src/database.ts:CommitHeroDatabase.initializeDatabase","target":"src/database.ts:prepare","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.initializeDatabase->src/database.ts:VALUES","source":"src/database.ts:CommitHeroDatabase.initializeDatabase","target":"src/database.ts:VALUES","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.initializeDatabase->src/database.ts:forEach","source":"src/database.ts:CommitHeroDatabase.initializeDatabase","target":"src/database.ts:forEach","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.initializeDatabase->src/database.ts:run","source":"src/database.ts:CommitHeroDatabase.initializeDatabase","target":"src/database.ts:run","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.initializeDatabase->src/database.ts:log","source":"src/database.ts:CommitHeroDatabase.initializeDatabase","target":"src/database.ts:log","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUser->src/database.ts:getUser","source":"src/database.ts:CommitHeroDatabase.getUser","target":"src/database.ts:getUser","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUser->src/database.ts:prepare","source":"src/database.ts:CommitHeroDatabase.getUser","target":"src/database.ts:prepare","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUser->src/database.ts:get","source":"src/database.ts:CommitHeroDatabase.getUser","target":"src/database.ts:get","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.createUser->src/database.ts:createUser","source":"src/database.ts:CommitHeroDatabase.createUser","target":"src/database.ts:createUser","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.createUser->src/database.ts:prepare","source":"src/database.ts:CommitHeroDatabase.createUser","target":"src/database.ts:prepare","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.createUser->src/database.ts:users","source":"src/database.ts:CommitHeroDatabase.createUser","target":"src/database.ts:users","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.createUser->src/database.ts:VALUES","source":"src/database.ts:CommitHeroDatabase.createUser","target":"src/database.ts:VALUES","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.createUser->src/database.ts:run","source":"src/database.ts:CommitHeroDatabase.createUser","target":"src/database.ts:run","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.createUser->src/database.ts:Date","source":"src/database.ts:CommitHeroDatabase.createUser","target":"src/database.ts:Date","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.createUser->src/database.ts:toISOString","source":"src/database.ts:CommitHeroDatabase.createUser","target":"src/database.ts:toISOString","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getOrCreateUser->src/database.ts:getOrCreateUser","source":"src/database.ts:CommitHeroDatabase.getOrCreateUser","target":"src/database.ts:getOrCreateUser","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getOrCreateUser->src/database.ts:getUser","source":"src/database.ts:CommitHeroDatabase.getOrCreateUser","target":"src/database.ts:getUser","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getOrCreateUser->src/database.ts:createUser","source":"src/database.ts:CommitHeroDatabase.getOrCreateUser","target":"src/database.ts:createUser","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.addCommit->src/database.ts:addCommit","source":"src/database.ts:CommitHeroDatabase.addCommit","target":"src/database.ts:addCommit","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.addCommit->src/database.ts:getOrCreateUser","source":"src/database.ts:CommitHeroDatabase.addCommit","target":"src/database.ts:getOrCreateUser","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.addCommit->src/database.ts:prepare","source":"src/database.ts:CommitHeroDatabase.addCommit","target":"src/database.ts:prepare","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.addCommit->src/database.ts:commits","source":"src/database.ts:CommitHeroDatabase.addCommit","target":"src/database.ts:commits","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.addCommit->src/database.ts:VALUES","source":"src/database.ts:CommitHeroDatabase.addCommit","target":"src/database.ts:VALUES","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.addCommit->src/database.ts:run","source":"src/database.ts:CommitHeroDatabase.addCommit","target":"src/database.ts:run","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.addCommit->src/database.ts:Date","source":"src/database.ts:CommitHeroDatabase.addCommit","target":"src/database.ts:Date","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.addCommit->src/database.ts:toISOString","source":"src/database.ts:CommitHeroDatabase.addCommit","target":"src/database.ts:toISOString","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getCommits->src/database.ts:getCommits","source":"src/database.ts:CommitHeroDatabase.getCommits","target":"src/database.ts:getCommits","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getCommits->src/database.ts:getUser","source":"src/database.ts:CommitHeroDatabase.getCommits","target":"src/database.ts:getUser","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getCommits->src/database.ts:prepare","source":"src/database.ts:CommitHeroDatabase.getCommits","target":"src/database.ts:prepare","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getCommits->src/database.ts:all","source":"src/database.ts:CommitHeroDatabase.getCommits","target":"src/database.ts:all","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getAllBadges->src/database.ts:getAllBadges","source":"src/database.ts:CommitHeroDatabase.getAllBadges","target":"src/database.ts:getAllBadges","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getAllBadges->src/database.ts:prepare","source":"src/database.ts:CommitHeroDatabase.getAllBadges","target":"src/database.ts:prepare","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getAllBadges->src/database.ts:all","source":"src/database.ts:CommitHeroDatabase.getAllBadges","target":"src/database.ts:all","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUserBadges->src/database.ts:getUserBadges","source":"src/database.ts:CommitHeroDatabase.getUserBadges","target":"src/database.ts:getUserBadges","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUserBadges->src/database.ts:getUser","source":"src/database.ts:CommitHeroDatabase.getUserBadges","target":"src/database.ts:getUser","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUserBadges->src/database.ts:getAllBadges","source":"src/database.ts:CommitHeroDatabase.getUserBadges","target":"src/database.ts:getAllBadges","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUserBadges->src/database.ts:prepare","source":"src/database.ts:CommitHeroDatabase.getUserBadges","target":"src/database.ts:prepare","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUserBadges->src/database.ts:all","source":"src/database.ts:CommitHeroDatabase.getUserBadges","target":"src/database.ts:all","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.unlockBadge->src/database.ts:unlockBadge","source":"src/database.ts:CommitHeroDatabase.unlockBadge","target":"src/database.ts:unlockBadge","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.unlockBadge->src/database.ts:getUser","source":"src/database.ts:CommitHeroDatabase.unlockBadge","target":"src/database.ts:getUser","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.unlockBadge->src/database.ts:prepare","source":"src/database.ts:CommitHeroDatabase.unlockBadge","target":"src/database.ts:prepare","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.unlockBadge->src/database.ts:user_badges","source":"src/database.ts:CommitHeroDatabase.unlockBadge","target":"src/database.ts:user_badges","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.unlockBadge->src/database.ts:VALUES","source":"src/database.ts:CommitHeroDatabase.unlockBadge","target":"src/database.ts:VALUES","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.unlockBadge->src/database.ts:run","source":"src/database.ts:CommitHeroDatabase.unlockBadge","target":"src/database.ts:run","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.unlockBadge->src/database.ts:catch","source":"src/database.ts:CommitHeroDatabase.unlockBadge","target":"src/database.ts:catch","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUserStats->src/database.ts:getUserStats","source":"src/database.ts:CommitHeroDatabase.getUserStats","target":"src/database.ts:getUserStats","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUserStats->src/database.ts:getUser","source":"src/database.ts:CommitHeroDatabase.getUserStats","target":"src/database.ts:getUser","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUserStats->src/database.ts:getCommits","source":"src/database.ts:CommitHeroDatabase.getUserStats","target":"src/database.ts:getCommits","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUserStats->src/database.ts:getUserBadges","source":"src/database.ts:CommitHeroDatabase.getUserStats","target":"src/database.ts:getUserBadges","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUserStats->src/database.ts:reduce","source":"src/database.ts:CommitHeroDatabase.getUserStats","target":"src/database.ts:reduce","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUserStats->src/database.ts:Set","source":"src/database.ts:CommitHeroDatabase.getUserStats","target":"src/database.ts:Set","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.getUserStats->src/database.ts:map","source":"src/database.ts:CommitHeroDatabase.getUserStats","target":"src/database.ts:map","type":"calls"}},{"data":{"id":"src/database.ts:CommitHeroDatabase.close->src/database.ts:close","source":"src/database.ts:CommitHeroDatabase.close","target":"src/database.ts:close","type":"calls"}},{"data":{"id":"src/core.ts:CommitHeroCore.addCommit->src/core.ts:addCommit","source":"src/core.ts:CommitHeroCore.addCommit","target":"src/core.ts:addCommit","type":"calls"}},{"data":{"id":"src/core.ts:CommitHeroCore.addCommit->src/core.ts:checkForNewAchievements","source":"src/core.ts:CommitHeroCore.addCommit","target":"src/core.ts:checkForNewAchievements","type":"calls"}},{"data":{"id":"src/core.ts:CommitHeroCore.getUserStats->src/core.ts:getUserStats","source":"src/core.ts:CommitHeroCore.getUserStats","target":"src/core.ts:getUserStats","type":"calls"}},{"data":{"id":"src/core.ts:CommitHeroCore.getUserBadges->src/core.ts:getUserBadges","source":"src/core.ts:CommitHeroCore.getUserBadges","target":"src/core.ts:getUserBadges","type":"calls"}},{"data":{"id":"src/core.ts:CommitHeroCore.getAllBadges->src/core.ts:getAllBadges","source":"src/core.ts:CommitHeroCore.getAllBadges","target":"src/core.ts:getAllBadges","type":"calls"}},{"data":{"id":"src/core.ts:CommitHeroCore.checkForNewAchievements->src/core.ts:checkForNewAchievements","source":"src/core.ts:CommitHeroCore.checkForNewAchievements","target":"src/core.ts:checkForNewAchievements","type":"calls"}},{"data":{"id":"src/core.ts:CommitHeroCore.checkForNewAchievements->src/core.ts:getCommits","source":"src/core.ts:CommitHeroCore.checkForNewAchievements","target":"src/core.ts:getCommits","type":"calls"}},{"data":{"id":"src/core.ts:CommitHeroCore.checkForNewAchievements->src/core.ts:getUserBadges","source":"src/core.ts:CommitHeroCore.checkForNewAchievements","target":"src/core.ts:getUserBadges","type":"calls"}},{"data":{"id":"src/core.ts:CommitHeroCore.checkForNewAchievements->src/core.ts:checkAchievements","source":"src/core.ts:CommitHeroCore.checkForNewAchievements","target":"src/core.ts:checkAchievements","type":"calls"}},{"data":{"id":"src/core.ts:CommitHeroCore.checkForNewAchievements->src/core.ts:some","source":"src/core.ts:CommitHeroCore.checkForNewAchievements","target":"src/core.ts:some","type":"calls"}},{"data":{"id":"src/core.ts:CommitHeroCore.checkForNewAchievements->src/core.ts:unlockBadge","source":"src/core.ts:CommitHeroCore.checkForNewAchievements","target":"src/core.ts:unlockBadge","type":"calls"}},{"data":{"id":"src/core.ts:CommitHeroCore.checkForNewAchievements->src/core.ts:push","source":"src/core.ts:CommitHeroCore.checkForNewAchievements","target":"src/core.ts:push","type":"calls"}},{"data":{"id":"src/core.ts:CommitHeroCore.close->src/core.ts:close","source":"src/core.ts:CommitHeroCore.close","target":"src/core.ts:close","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.checkAchievements->src/achievements.ts:checkAchievements","source":"src/achievements.ts:AchievementEngine.checkAchievements","target":"src/achievements.ts:checkAchievements","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.checkAchievements->src/achievements.ts:Set","source":"src/achievements.ts:AchievementEngine.checkAchievements","target":"src/achievements.ts:Set","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.checkAchievements->src/achievements.ts:map","source":"src/achievements.ts:AchievementEngine.checkAchievements","target":"src/achievements.ts:map","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.checkAchievements->src/achievements.ts:has","source":"src/achievements.ts:AchievementEngine.checkAchievements","target":"src/achievements.ts:has","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.checkAchievements->src/achievements.ts:evaluateBadge","source":"src/achievements.ts:AchievementEngine.checkAchievements","target":"src/achievements.ts:evaluateBadge","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.checkAchievements->src/achievements.ts:push","source":"src/achievements.ts:AchievementEngine.checkAchievements","target":"src/achievements.ts:push","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateBadge->src/achievements.ts:evaluateBadge","source":"src/achievements.ts:AchievementEngine.evaluateBadge","target":"src/achievements.ts:evaluateBadge","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateBadge->src/achievements.ts:calculateStats","source":"src/achievements.ts:AchievementEngine.evaluateBadge","target":"src/achievements.ts:calculateStats","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateBadge->src/achievements.ts:evaluateCriteria","source":"src/achievements.ts:AchievementEngine.evaluateBadge","target":"src/achievements.ts:evaluateCriteria","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateBadge->src/achievements.ts:calculateProgress","source":"src/achievements.ts:AchievementEngine.evaluateBadge","target":"src/achievements.ts:calculateProgress","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateBadge->src/achievements.ts:getMaxProgress","source":"src/achievements.ts:AchievementEngine.evaluateBadge","target":"src/achievements.ts:getMaxProgress","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.calculateStats->src/achievements.ts:calculateStats","source":"src/achievements.ts:AchievementEngine.calculateStats","target":"src/achievements.ts:calculateStats","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.calculateStats->src/achievements.ts:reduce","source":"src/achievements.ts:AchievementEngine.calculateStats","target":"src/achievements.ts:reduce","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.calculateStats->src/achievements.ts:Set","source":"src/achievements.ts:AchievementEngine.calculateStats","target":"src/achievements.ts:Set","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.calculateStats->src/achievements.ts:map","source":"src/achievements.ts:AchievementEngine.calculateStats","target":"src/achievements.ts:map","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateCriteria->src/achievements.ts:evaluateCriteria","source":"src/achievements.ts:AchievementEngine.evaluateCriteria","target":"src/achievements.ts:evaluateCriteria","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateCriteria->src/achievements.ts:split","source":"src/achievements.ts:AchievementEngine.evaluateCriteria","target":"src/achievements.ts:split","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateCriteria->src/achievements.ts:evaluateSingleCondition","source":"src/achievements.ts:AchievementEngine.evaluateCriteria","target":"src/achievements.ts:evaluateSingleCondition","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateCriteria->src/achievements.ts:trim","source":"src/achievements.ts:AchievementEngine.evaluateCriteria","target":"src/achievements.ts:trim","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateSingleCondition->src/achievements.ts:evaluateSingleCondition","source":"src/achievements.ts:AchievementEngine.evaluateSingleCondition","target":"src/achievements.ts:evaluateSingleCondition","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateSingleCondition->src/achievements.ts:match","source":"src/achievements.ts:AchievementEngine.evaluateSingleCondition","target":"src/achievements.ts:match","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateSingleCondition->src/achievements.ts:parseInt","source":"src/achievements.ts:AchievementEngine.evaluateSingleCondition","target":"src/achievements.ts:parseInt","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.evaluateSingleCondition->src/achievements.ts:switch","source":"src/achievements.ts:AchievementEngine.evaluateSingleCondition","target":"src/achievements.ts:switch","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.calculateProgress->src/achievements.ts:calculateProgress","source":"src/achievements.ts:AchievementEngine.calculateProgress","target":"src/achievements.ts:calculateProgress","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.calculateProgress->src/achievements.ts:match","source":"src/achievements.ts:AchievementEngine.calculateProgress","target":"src/achievements.ts:match","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.calculateProgress->src/achievements.ts:parseInt","source":"src/achievements.ts:AchievementEngine.calculateProgress","target":"src/achievements.ts:parseInt","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.calculateProgress->src/achievements.ts:min","source":"src/achievements.ts:AchievementEngine.calculateProgress","target":"src/achievements.ts:min","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.getMaxProgress->src/achievements.ts:getMaxProgress","source":"src/achievements.ts:AchievementEngine.getMaxProgress","target":"src/achievements.ts:getMaxProgress","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.getMaxProgress->src/achievements.ts:match","source":"src/achievements.ts:AchievementEngine.getMaxProgress","target":"src/achievements.ts:match","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.getMaxProgress->src/achievements.ts:parseInt","source":"src/achievements.ts:AchievementEngine.getMaxProgress","target":"src/achievements.ts:parseInt","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.getNewlyUnlocked->src/achievements.ts:getNewlyUnlocked","source":"src/achievements.ts:AchievementEngine.getNewlyUnlocked","target":"src/achievements.ts:getNewlyUnlocked","type":"calls"}},{"data":{"id":"src/achievements.ts:AchievementEngine.getNewlyUnlocked->src/achievements.ts:push","source":"src/achievements.ts:AchievementEngine.getNewlyUnlocked","target":"src/achievements.ts:push","type":"calls"}}]}];
+            
+            if (index >= callGraphData.length || !callGraphData[index] || callGraphData[index].nodes.length === 0) {
+                container.innerHTML = '<div class="no-data">暂无调用关系数据</div>';
+                return;
+            }
+            
+            const data = callGraphData[index];
+            
+            try {
+                const cy = cytoscape({
+                    container: container,
+                    elements: [
+                        ...data.nodes.map(node => ({
+                            data: { 
+                                id: node.id, 
+                                label: node.label,
+                                type: node.type
+                            }
+                        })),
+                        ...data.edges.map(edge => ({
+                            data: { 
+                                source: edge.source, 
+                                target: edge.target,
+                                type: edge.type
+                            }
+                        }))
+                    ],
+                    style: [
+                        {
+                            selector: 'node',
+                            style: {
+                                'background-color': 'data(type)',
+                                'label': 'data(label)',
+                                'width': 60,
+                                'height': 60,
+                                'text-valign': 'center',
+                                'text-halign': 'center',
+                                'font-size': '10px',
+                                'text-wrap': 'wrap',
+                                'text-max-width': '80px'
+                            }
+                        },
+                        {
+                            selector: 'node[type = "#e53e3e"]',
+                            style: {
+                                'background-color': '#e53e3e',
+                                'color': 'white'
+                            }
+                        },
+                        {
+                            selector: 'node[type = "#38a169"]',
+                            style: {
+                                'background-color': '#38a169',
+                                'color': 'white'
+                            }
+                        },
+                        {
+                            selector: 'node[type = "#667eea"]',
+                            style: {
+                                'background-color': '#667eea',
+                                'color': 'white'
+                            }
+                        },
+                        {
+                            selector: 'node[type = "#718096"]',
+                            style: {
+                                'background-color': '#718096',
+                                'color': 'white'
+                            }
+                        },
+                        {
+                            selector: 'edge',
+                            style: {
+                                'width': 2,
+                                'line-color': '#ccc',
+                                'target-arrow-color': '#ccc',
+                                'target-arrow-shape': 'triangle',
+                                'arrow-scale': 1.2
+                            }
+                        }
+                    ],
+                    layout: {
+                        name: 'breadthfirst',
+                        directed: true,
+                        spacingFactor: 1.5,
+                        animate: true,
+                        animationDuration: 500
+                    }
+                });
+                
+                container.setAttribute('data-initialized', 'true');
+            } catch (error) {
+                console.error('Failed to initialize call graph:', error);
+                container.innerHTML = '<div class="no-data">暂无调用关系数据</div>';
+            }
+        }
+    </script>
+</body>
+</html>
